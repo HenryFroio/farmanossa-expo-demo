@@ -1,8 +1,8 @@
-# 🏥 Farmanossa: Real-Time Data Engineering Platform for Healthcare Logistics - DEMO
+# 🏥 Farmanossa: Sistema de Gestão de Entregas Multiplataforma para Farmácia - DEMO
 
 > **⚠️ DATA ENGINEERING PORTFOLIO PROJECT**  
-> This is a sanitized version of a production **data platform** developed for CSP COMERCIO DE MEDICAMENTOS LTDA.  
-> Demonstrates **real-time data pipelines**, **event-driven architecture**, and **scalable data processing** for healthcare logistics.  
+> This is a sanitized version of a production **delivery management system** developed for CSP COMERCIO DE MEDICAMENTOS LTDA.  
+> Demonstrates a **multiplatform delivery management system** with **real-time data pipelines**, **event-driven architecture**, and **scalable data processing** for pharmacy logistics.  
 > **🎯 PURPOSE:** Showcase Data Engineering skills including ETL/ELT, real-time streaming, and cloud-native data architecture
 
 [![Real-Time Data](https://img.shields.io/badge/Real--Time_Data-Streaming-red.svg)](https://firebase.google.com)
@@ -11,7 +11,7 @@
 [![Cloud Native](https://img.shields.io/badge/Cloud--Native-Serverless-orange.svg)](https://firebase.google.com)
 [![Data Processing](https://img.shields.io/badge/Data-Processing-purple.svg)](https://typescriptlang.org)
 
-> **Production-scale data engineering platform** demonstrating **real-time data ingestion**, **event-driven ETL pipelines**, **geospatial data processing**, and **serverless data architecture** for healthcare delivery optimization
+> **Production-scale delivery management platform** demonstrating **real-time data ingestion**, **event-driven ETL pipelines**, **geospatial data processing**, and **serverless data architecture** for pharmacy delivery optimization
 
 A comprehensive **data engineering solution** showcasing **real-time data streaming**, **automated data pipelines**, **location-based analytics**, and **event-driven data processing** for pharmacy delivery logistics optimization.
 
@@ -23,8 +23,9 @@ A comprehensive **data engineering solution** showcasing **real-time data stream
 - **Schema validation** and data quality checks at ingestion
 - **Event-driven data collection** with automatic error handling
 
-### **⚡ Data Processing Engine (Node.js/Firebase Functions)**
-- **Serverless ETL pipelines** with Firebase Functions for auto-scaling
+### **⚡ Data Processing Engine (Multi-tier Architecture)**
+- **Serverless ETL pipelines** with Firebase Functions for basic operations
+- **Client-side data transformation** in mobile app hooks and utilities (primary processing layer)
 - **Real-time data transformation** and business logic application
 - **Event-driven data processing** with automated triggers
 - **Geospatial data processing** for location-based analytics
@@ -57,7 +58,7 @@ The data platform implements **flexible processing deployment** with identical d
 
 ## 🚀 **Data Engineering Overview**
 
-**Farmanossa** is a **production-grade data platform** implementing modern data engineering patterns:
+**Farmanossa** is a **production-grade delivery management platform** implementing modern data engineering patterns:
 
 ### **Core Data Engineering Capabilities**
 - 🔄 **Real-time event streaming** with Firebase listeners processing delivery events
@@ -93,7 +94,7 @@ The data platform implements **flexible processing deployment** with identical d
 
 ### **💾 Data Storage & Warehousing**
 - **Real-time NoSQL database** (Firestore) for operational data
-- **Document-based data model** optimized for healthcare logistics
+- **Document-based data model** optimized for pharmacy delivery logistics
 - **Automatic data replication** across multiple regions
 - **ACID compliance** for critical business transactions
 - **Real-time data synchronization** across all connected systems
@@ -139,10 +140,16 @@ The data platform implements **flexible processing deployment** with identical d
 
 ### **Event-Driven Data Architecture**
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ Data Collection │────│   Data Lake      │────│ Data Processing │
-│  (Mobile Apps)  │    │   (Firestore)    │    │  (Functions)    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+                        ┌─────────────────┐
+                        │   OCR Pipeline  │
+                        │ (Azure + Custom)│
+                        └─────────────────┘
+                                 │
+                                 ▼
+┌─────────────────┐              │              ┌─────────────────┐
+│   Data Lake     │◄─────────────┼─────────────►│ Data Processing │
+│   (Firestore)   │              │              │ (Mobile Apps)   │
+└─────────────────┘              │              └─────────────────┘
          │                       │                       │
          │              ┌─────────────────┐             │
          └──────────────│ Geospatial APIs │─────────────┘
@@ -150,15 +157,15 @@ The data platform implements **flexible processing deployment** with identical d
                         └─────────────────┘
                                  │
                         ┌─────────────────┐
-                        │   OCR Pipeline  │
-                        │ (Azure + Custom)│
+                        │ Data Collection │
+                        │  (Mobile Apps)  │
                         └─────────────────┘
 ```
 
 ### **End-to-End Data Processing Pipeline**
-1. **Data Ingestion**: Multi-source data collection (mobile, OCR, APIs) with schema validation
+1. **OCR Data Ingestion**: Sales screen screenshots processed through Azure OCR pipeline
 2. **Data Validation**: Real-time validation, cleansing, and business rule enforcement  
-3. **Event Processing**: Event-driven workflows with automated data transformations
+3. **Event Processing**: Event-driven workflows with automated data transformations (primarily in mobile app hooks and utilities)
 4. **Geospatial Processing**: Location data enrichment and spatial analytics
 5. **Stream Analytics**: Real-time aggregations and KPI calculations
 6. **Data Distribution**: Processed data delivery to downstream systems and notifications
