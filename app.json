@@ -1,0 +1,152 @@
+{
+  "expo": {
+    "name": "Farmanossa",
+    "slug": "farmanossadf",
+    "version": "1.1.11",
+    "orientation": "portrait",
+    "icon": "./src/assets/avatar-red.jpg",
+    "scheme": "farmanossadf",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.farmanossadf.app",
+      "buildNumber": "3",
+      "supportsTablet": true,
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Precisamos da sua localização para rastrear entregas e mostrar farmácias próximas. Seus dados são usados apenas para melhorar a experiência do serviço.",
+        "NSLocationAlwaysUsageDescription": "Para garantir entregas precisas e seguras, precisamos acessar sua localização mesmo quando o app está em segundo plano. Seus dados são usados exclusivamente para fins de entrega.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Sua localização é usada para rastrear entregas e mostrar farmácias próximas, garantindo um serviço eficiente e seguro. Seus dados são protegidos e usados apenas para melhorar nossos serviços.",
+        "NSPhotoLibraryUsageDescription": "O aplicativo precisa de acesso ao armazenamento para salvar PDFs.",
+        "NSPhotoLibraryAddUsageDescription": "O aplicativo precisa de acesso ao armazenamento para salvar PDFs.",
+        "NSUserTrackingUsageDescription": "Permitir o rastreamento ajuda a fornecer entregas mais precisas e notificações relevantes. Seus dados são utilizados exclusivamente para o funcionamento do serviço e nunca são compartilhados com terceiros.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "fb${FACEBOOK_APP_ID}",
+              "com.googleusercontent.apps.670446448086-e5ub65lcogt4quddblppaeraeindnjr5",
+              "com.farmanossadf.app"
+            ]
+          }
+        ],
+        "SKAdNetworkItems": [
+          {
+            "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork"
+          },
+          {
+            "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork"
+          }
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.farmanossa",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_EXTERNAL_STORAGE",
+        "POST_NOTIFICATIONS",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "android.permission.INTERNET",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "com.google.android.gms.permission.AD_ID"
+      ],
+      "googleServicesFile": "./google-services.json",
+      "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "farmanossadf",
+              "host": "*.farmanossa.com",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "plugins": [
+      [
+        "@react-native-google-signin/google-signin"
+      ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "${FACEBOOK_APP_ID}",
+          "clientToken": "${FACEBOOK_CLIENT_TOKEN}",
+          "displayName": "Farmanossa",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "O aplicativo precisa de acesso ao armazenamento para salvar PDFs.",
+          "savePhotosPermission": "O aplicativo precisa de acesso ao armazenamento para salvar PDFs.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Precisamos da sua localização para garantir entregas seguras e eficientes. Seus dados são usados apenas para melhorar nossos serviços.",
+          "locationAlwaysPermission": "Para rastrear entregas com precisão, precisamos acessar sua localização mesmo em segundo plano. Seus dados são protegidos e usados exclusivamente para entregas.",
+          "locationWhenInUsePermission": "Sua localização é necessária para mostrar farmácias próximas e rastrear entregas em andamento."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/avatar-red.jpg",
+          "color": "#ffffff",
+          "androidMode": "default",
+          "androidCollapsedTitle": "Farmanossa",
+          "iosDisplayInForeground": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1",
+            "useFrameworks": "static",
+            "config": "./ios-build-config.js"
+          }
+        }
+      ],
+      "expo-tracking-transparency"
+    ],
+    "extra": {
+      "googleMapsApiKey": "AIzaSyAeB_XWNDHz8Wuq1dKTSz3u0JOJdmlKSyo",
+      "eas": {
+        "projectId": "b2af46af-966b-48a0-9aac-3330c19e5ee5"
+      }
+    },
+    "owner": "henrymatheusfroio",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ff5aaf92-c863-41a3-8da5-8f029b64115c"
+    }
+  }
+}
