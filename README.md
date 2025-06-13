@@ -1,7 +1,11 @@
 # 🏥 Farmanossa: Multiplatform Pharmacy Delivery Management System - DEMO
 
 > **⚠️ DATA ENGINEERING PORTFOLIO PROJECT**  
-> This is a sanitized version of a production **delivery management system** developed for CSP COMERCIO DE MEDICAMENTOS LTDA.  
+> This is a ### **👥 Customer Data Platform & Experience Analytics**
+- **Real-time delivery tracking** with live GPS location sharing to customers
+- **Push notification system** for instant order status updates
+- **Customer journey mapping** with delivery status visibility and timeline
+- **Multi-channel communication** ensuring customers stay informed throughout delivery processanitized version of a production **delivery management system** developed for CSP COMERCIO DE MEDICAMENTOS LTDA.  
 > Demonstrates a **multiplatform delivery management system** with **real-time data pipelines**, **event-driven architecture**, and **scalable data processing** for pharmacy logistics.  
 > **🎯 PURPOSE:** Showcase Data Engineering skills including ETL/ELT, real-time streaming, and cloud-native data architecture
 
@@ -79,9 +83,12 @@ The data platform implements **flexible processing deployment** with identical d
 
 ### **Data Processing Layer**
 - **Event Streaming**: Firebase Firestore real-time listeners
+- **Real-time ETL**: Custom React hooks processing data streams with onSnapshot listeners
+- **Data Transformation**: Live aggregation and analytics via useStatsData and business logic hooks
+- **State Management**: Event-driven data synchronization across multiple collections
 ### **☁️ Cloud Data Infrastructure**
 - **Firebase Firestore** (Real-time NoSQL data warehouse with automatic scaling)
-- **Firebase Functions** (Serverless data processing and ETL operations)
+- **Firebase Functions** (Serverless business logic, notifications, and automated reporting)
 - **Google Cloud Platform** (Managed cloud infrastructure for data processing)
 - **Google Maps API** (Geospatial data enrichment and location intelligence)
 - **Azure Cognitive Services** (OCR data extraction and text processing pipeline)
@@ -108,33 +115,30 @@ The data platform implements **flexible processing deployment** with identical d
 
 ## 📊 **Data Engineering Capabilities & Use Cases**
 
-### **🎯 Real-Time Data Analytics & Business Intelligence**
+### **🎯 Real-Time Delivery Management & Fleet Analytics**
 - **Live KPI dashboards** with sub-second data freshness
-- **Operational analytics** with real-time delivery performance metrics  
-- **Multi-dimensional data analysis** across pharmacy locations and time periods
-- **Predictive analytics** for delivery time estimation and route optimization
-- **Automated anomaly detection** in delivery patterns and performance
+- **Real-time order processing** with automated status tracking and performance metrics
+- **Digital timesheet system** showing available delivery personnel and working hours
+- **Delivery performance analytics** tracking completion times for each order stage
+- **Fleet management optimization** with real-time deliveryman availability and assignment
 
 ### **🗺️ Geospatial Data Engineering & Location Intelligence**
 - **Real-time GPS data streams** with geofencing validation and alerts
 - **Spatial data processing** for route optimization and territory analysis
-- **Location-based event triggers** for automated check-in/check-out workflows
 - **Geospatial analytics** for delivery efficiency and coverage optimization
 - **Historical location data warehousing** for pattern analysis and insights
 
-### **📦 Order & Inventory Data Management**
+### **📦 Order & Delivery Data Management**
 - **Event-sourced order state management** with complete audit trails
-- **Real-time inventory synchronization** across multiple pharmacy locations
-- **Automated data pipelines** for order processing and fulfillment workflows
+- **Real-time order processing** with automated status updates and tracking
 - **Cross-system data integration** between pharmacy POS and delivery systems
 - **Data quality monitoring** with automated validation and cleansing
 
 ### **📱 Customer Data Platform & Experience Analytics**
-- **360-degree customer data integration** from multiple touchpoints
-- **Real-time personalization** based on purchase history and location data
-- **Customer journey analytics** with delivery experience optimization
-- **Behavioral data processing** for predictive customer insights
-- **Privacy-compliant data handling** with automated anonymization
+- **Real-time delivery tracking** with live GPS location sharing to customers
+- **Push notification system** for instant order status updates
+- **Customer journey mapping** with delivery status visibility and timeline
+- **Multi-channel communication** ensuring customers stay informed throughout delivery process
 
 ## 🏗️ **Data Engineering Architecture & Processing Flow**
 
@@ -272,37 +276,7 @@ npm run build:android
 npm run build:ios
 ```
 
-## 📊 **Data Engineering & Performance Metrics**
-
-### **🔄 Real-time Data Synchronization**
-- **Firestore listeners** for instantaneous order updates across all clients
-- **Optimistic UI updates** with conflict resolution algorithms
-- **Global state management** using React Context with data persistence
-- **Offline-first architecture** with automatic synchronization on reconnection
-
-### **📍 Location Intelligence & Geospatial Analytics**
-- **Background GPS tracking** with `expo-location` and geofencing capabilities
-- **Automated checkpoint validation** during delivery workflows
-- **Route optimization algorithms** with distance and time calculations
-- **Predictive delivery time estimation** based on historical data
-
-### **🏗️ Scalable Data Architecture**
-- **Custom React hooks** for reusable data access patterns
-- **Clean architecture principles** with separation of concerns
-- **Type-safe data models** with comprehensive TypeScript coverage
-- **Event-driven state management** for complex business workflows
-
-### **📱 Modern UX/UI with Performance Optimization**
-- **Consistent design system** with reusable component library
-- **60fps animations** using React Native Reanimated v3
-- **Interactive bottom sheets** for natural mobile interactions
-- **Memory-efficient image handling** and lazy loading
-
-### **🔐 Enterprise-grade Security & Authentication**
-- **Multi-provider Firebase Auth** (Email, Google, Facebook, Apple)
-- **Role-based access control** (RBAC) with granular permissions
-- **Route protection** with authentication guards
-- **Data encryption** in transit and at rest
+## � **Workflow & Data Pipeline**
 
 ## 🔍 **Pharmacy OCR Integration - Pipeline Entry Point**
 
@@ -381,58 +355,31 @@ Delivery Completion → Analytics & Reporting
 7. **📍 Tracking:** Real-time GPS tracking and customer updates
 8. **✅ Completion:** Delivery confirmation and analytics
 
-## 📈 **Business Intelligence & Analytics**
+## 🎯 **Portfolio & Technical Expertise**
 
-### **Real-time Operational Metrics**
-- **+1,000 daily deliveries** processed with 99.9% system uptime
-- **<2 second** average app load time with optimized data fetching
-- **Real-time synchronization** across all user devices and roles
-- **95% GPS accuracy** for delivery tracking and route optimization
-
-### **Data Quality & Processing Performance**
-- **Sub-second** Firebase query response times
-- **Batch processing** capabilities for large data operations
-- **Automated data validation** with business rule enforcement
-- **Comprehensive error handling** with automatic retry mechanisms
-
-## 🤝 **Portfolio & Professional Development**
-
-### **This is a Professional Portfolio Project:**
-
-This project demonstrates advanced technical capabilities in:
+### **This is a Professional Portfolio Project demonstrating:**
 - **Full-stack mobile development** with React Native/Expo
-- **Real-time data engineering** and synchronization  
+- **Real-time data engineering** with Firebase and custom hooks ETL processing
 - **Cloud architecture** design and implementation
 - **OCR and data processing** pipeline development
 - **Enterprise-level authentication** and security
 - **Clean Architecture** principles and SOLID design patterns
-- **Data-driven decision making** with real-time analytics
+- **Geospatial data processing** and location intelligence
 - **Scalable microservices** architecture
-- **Modern DevOps practices** with automated CI/CD
+
+### **Business Impact & Performance:**
+- **+1,000 daily deliveries** processed with 99.9% system uptime
+- **<2 second** average app load time with optimized data fetching
+- **Real-time synchronization** across all user devices and roles
+- **95% GPS accuracy** for delivery tracking and route optimization
+- **Sub-second** Firebase query response times
+- **Operational efficiency** improvements through automation and real-time fleet management
 
 ### **For Professional Evaluation:**
 - 📋 **Code Review:** Available for technical assessment
 - 💼 **Employer Evaluation:** Full documentation provided for hiring review
 - 🤝 **Collaboration Inquiries:** Open to discussing similar projects
 - 📧 **Technical Questions:** Contact for architecture or implementation details
-
-## 🎯 **Portfolio Highlights**
-
-### **Technical Expertise Demonstrated:**
-- ✅ **Full-stack mobile development** with React Native/Expo
-- ✅ **Real-time data synchronization** and state management
-- ✅ **Cloud infrastructure** design and implementation
-- ✅ **Data engineering pipelines** and ETL processes
-- ✅ **Location-based services** and geospatial analytics
-- ✅ **OCR and document processing** systems
-- ✅ **Enterprise authentication** and security patterns
-- ✅ **Performance optimization** and scalability planning
-
-### **Business Impact:**
-- 📈 **Operational efficiency** improvements through automation
-- 🎯 **Data accuracy** enhancements via intelligent processing
-- 🚀 **Scalable architecture** supporting growth from startup to enterprise
-- 💡 **Innovation** in pharmaceutical logistics and delivery management
 
 ## 📄 **License & Usage**
 
