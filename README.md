@@ -181,104 +181,7 @@ The data platform implements **flexible processing deployment** with identical d
 - **Alerting system** for data quality issues and processing failures
 - **Performance optimization** with automatic scaling and resource management
 
-## 🔧 **Data Engineering Setup & Development Environment**
-
-### **Prerequisites for Data Engineering**
-```bash
-Node.js >= 18.x
-npm ou yarn
-Expo CLI
-Android Studio (para Android)
-Xcode (para iOS - macOS apenas)
-```
-
-### **1. Clone o repositório**
-```bash
-git clone https://github.com/seuusuario/farmanossa-expo.git
-cd farmanossa-expo
-```
-
-### **2. Instale as dependências**
-```bash
-npm install
-```
-
-### **3. Configure as variáveis de ambiente**
-```bash
-# Copie o arquivo de exemplo
-cp .env.example .env
-
-# Configure suas chaves de API
-GOOGLE_MAPS_API_KEY=sua_google_maps_api_key
-FIREBASE_API_KEY=sua_firebase_api_key
-# ... outras variáveis
-```
-
-### **4. Configure o Firebase**
-- Crie um projeto no [Firebase Console](https://console.firebase.google.com)
-- Adicione os arquivos de configuração:
-  - `google-services.json` (Android)
-  - `GoogleService-Info.plist` (iOS)
-
-### **5. Execute o projeto**
-
-#### **Frontend (Mobile App)**
-```bash
-# Desenvolvimento
-npm start
-
-# Específico para plataforma
-npm run android
-npm run ios
-```
-
-#### **Backend API (Duas opções de deployment)**
-
-**Opção 1: Desenvolvimento Local (Express.js Standalone)**
-```bash
-# Entre na pasta do backend
-cd backend
-
-# Instale as dependências
-npm install
-
-# Execute o servidor local
-node index.js
-# Backend rodando em http://localhost:3000
-```
-
-**Opção 2: Produção (Firebase Functions)**
-```bash
-# Entre na pasta das functions
-cd backend/functions
-
-# Instale as dependências
-npm install
-
-# Deploy para Firebase (produção)
-firebase deploy --only functions
-
-# Ou teste localmente
-firebase emulators:start --only functions
-```
-
-> **💡 Dica:** Durante o desenvolvimento, use a **Opção 1** para testes rápidos e debugging. Para produção ou demonstração da arquitetura serverless, use a **Opção 2**.
-
-## 🚀 **Build para Produção**
-
-### **Android**
-```bash
-npm run build:android
-```
-
-### **iOS**
-```bash
-npm run build:ios
-```
-
-## � **Workflow & Data Pipeline**
-
-## 🔍 **Pharmacy OCR Integration - Pipeline Entry Point**
+##  **Pharmacy OCR Integration - Pipeline Entry Point**
 
 ### **Sales Screen Processing System**
 
@@ -320,7 +223,7 @@ interface ExtractedOrderData {
 }
 ```
 
-**Repository:** [Pharmacy OCR System](../pharmacy-ocr/)
+**Repository:** [Pharmacy OCR System](https://github.com/HenryFroio/pharmacy-ocr-demo)
 
 ## 🌐 **Complete Ecosystem Overview**
 
@@ -398,20 +301,16 @@ This is a **proprietary software project** owned by **CSP COMERCIO DE MEDICAMENT
 
 For licensing inquiries or collaboration opportunities, please contact directly.
 
-See the [LICENSE](LICENSE) file for complete terms and restrictions.
-
 ## 📞 **Professional Contact**
 
 **Henry Froio**  
-*Full-Stack Developer & Data Engineering Specialist*
-
-**Company:** CSP COMERCIO DE MEDICAMENTOS LTDA
+*Data Engineer & Software Engineer*
 
 Experienced in building **data-driven mobile applications** and **intelligent document processing systems** for healthcare and logistics industries.
 
 - 📧 **Email:** henry.froio@outlook.com
-- 💼 **LinkedIn:** https://www.linkedin.com/in/henry-matheus-nascimento-froio-827816238/
-- 🌐 **Portfolio:** henryfroio.com
+- 💼 **LinkedIn:** https://www.linkedin.com/in/henry-froio-827816238/
+- 🌐 **Portfolio:** https://henryfroio.com
 - 🔗 **GitHub:** https://github.com/HenryFroio
 
 ### **Project Information:**
