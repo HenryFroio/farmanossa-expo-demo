@@ -1,4 +1,4 @@
-# 🏥 Farmanossa: Sistema de Gestão de Entregas Multiplataforma para Farmácia - DEMO
+# 🏥 Farmanossa: Multiplatform Pharmacy Delivery Management System - DEMO
 
 > **⚠️ DATA ENGINEERING PORTFOLIO PROJECT**  
 > This is a sanitized version of a production **delivery management system** developed for CSP COMERCIO DE MEDICAMENTOS LTDA.  
