@@ -71,8 +71,8 @@ The data platform implements **flexible processing deployment** with identical d
 ### **Production Performance Metrics**
 - **Throughput**: 1,000+ orders processed daily
 - **Latency**: <1 second event processing time
-- **Data Pipeline**: OCR → Validation → Firestore ingestion in <3 seconds
-- **Real-time Updates**: GPS location streams every 10 seconds
+- **Data Pipeline**: OCR → Validation → Firestore ingestion in <5 seconds
+- **Real-time Updates**: GPS location streams on significant movement (optimized for efficiency)
 - **Uptime**: 99.9% platform availability
 
 ## 🛠️ **Data Stack & Architecture**
