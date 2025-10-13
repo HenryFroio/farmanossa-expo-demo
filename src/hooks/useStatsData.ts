@@ -1,5 +1,5 @@
 // src/hooks/useStatsData.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   collection, 
   query, 
@@ -11,13 +11,16 @@ import {
   getDoc,
   DocumentData,
   Query,
-  CollectionReference
+  CollectionReference,
+  onSnapshot,
+  Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { 
   calculateDetailedStats, 
   calculateOverallStats, 
   calculateTopMotorcycles,
+  getAllDeliverymenStats,
   UserRole,
   Order,
   Deliveryman,
@@ -62,7 +65,6 @@ export const getPontoDataForDeliveryman = async (
         ...pontoDoc.data()
       } as Ponto;
     } else {
-      console.log("No ponto document found!");
       return null;
     }
   } catch (error) {
@@ -99,7 +101,6 @@ export const getFolhaPontoDataForUnit = async (
   const dateString = date || new Date().toISOString().split('T')[0];
   
   try {
-    console.log(`Buscando registros de ponto para unidade ${unitId} na data ${dateString}`);
 
     // 1. Buscar todos os registros de ponto da data específica
     const pontosRef = collection(db, 'pontos');
@@ -109,7 +110,6 @@ export const getFolhaPontoDataForUnit = async (
     );
     const pontosSnapshot = await getDocs(pontosQuery);
 
-    console.log(`Encontrados ${pontosSnapshot.docs.length} registros de ponto para a data ${dateString}`);
 
     // 2. Filtrar registros que têm entradas na unidade especificada
     const pontosForUnit: Array<{ pontoData: any; deliverymanId: string }> = [];
@@ -138,8 +138,6 @@ export const getFolhaPontoDataForUnit = async (
       }
     });
 
-    console.log(`Encontrados ${pontosForUnit.length} registros de ponto para a unidade ${unitId}`);
-    console.log(`Funcionários únicos: ${deliverymanIds.size}`);
 
     // 3. Buscar nomes dos funcionários na coleção deliverymen
     const employeeNames = new Map<string, string>();
@@ -207,8 +205,6 @@ export const getFolhaPontoDataForUnit = async (
       sum + (emp.totalHours || 0), 0);
     const activeEmployees = employeesWithPonto.length;
 
-    console.log(`Total de horas da unidade: ${totalUnitHours}h`);
-    console.log(`Funcionários ativos: ${activeEmployees}`);
 
     return {
       id: `${dateString}-${unitId}`,
@@ -252,12 +248,6 @@ export const getPicoDataForUnit = async (
   endOfDayBrasilia.setUTCFullYear(year, month - 1, day + 1);
   endOfDayBrasilia.setUTCHours(2, 59, 59, 999); // 23:59 Brasília = 02:59 UTC do dia seguinte
   
-  console.log('=== DEBUG PICO DATA ===');
-  console.log('Data solicitada:', dateString);
-  console.log('Ano:', year, 'Mês:', month, 'Dia:', day);
-  console.log('Início Brasília (00:00):', startOfDayBrasilia.toISOString());
-  console.log('Fim Brasília (23:59):', endOfDayBrasilia.toISOString());
-  console.log('Unidade:', unitId);
 
   try {
     const ordersRef = collection(db, 'orders');
@@ -271,7 +261,6 @@ export const getPicoDataForUnit = async (
 
     const querySnapshot = await getDocs(q);
     
-    console.log('Pedidos encontrados no período:', querySnapshot.docs.length);
     
     // Inicializar contadores para cada hora (7h às 1h = 18 horas)
     const hourCounts: { [hour: number]: number } = {};
@@ -295,11 +284,6 @@ export const getPicoDataForUnit = async (
         const brasiliaDateStr = orderDateBrasilia.toISOString().split('T')[0];
         
         // Debug detalhado
-        console.log(`Pedido: ${data.orderId}`);
-        console.log(`  UTC: ${orderDateUTC.toISOString()}`);
-        console.log(`  Brasília: ${orderDateBrasilia.toISOString()}`);
-        console.log(`  Data Brasília: ${brasiliaDateStr} | Solicitada: ${dateString}`);
-        console.log(`  Hora Brasília: ${brasiliaHour}h`);
         
         // Verificar se o pedido é realmente do dia solicitado (em horário de Brasília)
         if (brasiliaDateStr === dateString) {
@@ -307,18 +291,14 @@ export const getPicoDataForUnit = async (
           if ((brasiliaHour >= 7 && brasiliaHour <= 23) || brasiliaHour === 0 || brasiliaHour === 1) {
             if (hourCounts[brasiliaHour] !== undefined) {
               hourCounts[brasiliaHour]++;
-              console.log(`  ✅ Contado na hora ${brasiliaHour}h`);
             }
           } else {
-            console.log(`  ❌ Fora do horário de funcionamento (${brasiliaHour}h)`);
           }
         } else {
-          console.log(`  ❌ Data diferente: ${brasiliaDateStr} !== ${dateString}`);
         }
       }
     });
 
-    console.log('Contadores finais por hora (Brasília):', hourCounts);
 
     // Converter para array e formatar
     const picoData: PicoData[] = [];
@@ -365,6 +345,7 @@ interface StatsData {
   overallStats: any;
   topMotorcycles: Array<{ plate: string; count: number }>;
   recentOrders: Order[];
+  allDeliverymenStats: Array<{ name: string; deliveries: number; averageRating: number; id: string }>;
   isLoading: boolean;
   hasError: boolean;
 }
@@ -374,6 +355,7 @@ interface QueryConfig {
   recentOrdersQuery: Query<DocumentData>;
   deliveredOrdersQuery: Query<DocumentData>;
   deliveryRunsQuery: Query<DocumentData>;
+  ratingsQuery: Query<DocumentData>; // Nova query específica para ratings sem limite de data
 }
 
 interface DateFilter {
@@ -396,12 +378,18 @@ export const useStatsData = (
     overallStats: null,
     topMotorcycles: [],
     recentOrders: [],
+    allDeliverymenStats: [],
     isLoading: true,
     hasError: false
   });
 
-  useEffect(() => {
+  // Ref para manter referência aos unsubscribers
+  const unsubscribersRef = useRef<Unsubscribe[]>([]);
 
+  useEffect(() => {
+    // Limpar listeners anteriores
+    unsubscribersRef.current.forEach(unsubscribe => unsubscribe());
+    unsubscribersRef.current = [];
 
     const configureQueries = (): QueryConfig => {
       const mainCollection = collection(db, type === 'deliveryman' ? 'deliverymen' : 'pharmacyUnits');
@@ -412,6 +400,7 @@ export const useStatsData = (
       let recentOrdersQuery: Query<DocumentData>;
       let deliveredOrdersQuery: Query<DocumentData>;
       let deliveryRunsQuery: Query<DocumentData>;
+      let ratingsQuery: Query<DocumentData>;
     
       recentOrdersQuery = query(
         ordersCollection,
@@ -423,6 +412,12 @@ export const useStatsData = (
         ordersCollection,
         where('status', '==', 'Entregue')
       );
+
+      // Query específica para ratings - busca pedidos com rating > 0 (todos os históricos)
+      ratingsQuery = query(
+        ordersCollection,
+        where('rating', '>', 0)
+      );
     
       switch (userRole?.toLowerCase()) {
         case 'admin':
@@ -432,6 +427,7 @@ export const useStatsData = (
             // Para entregadores
             recentOrdersQuery = query(recentOrdersQuery, where('deliveryMan', 'in', ids));
             deliveredOrdersQuery = query(deliveredOrdersQuery, where('deliveryMan', 'in', ids));
+            ratingsQuery = query(ratingsQuery, where('deliveryMan', 'in', ids));
             // Correção: Buscar deliveryRuns pelo deliverymanId
             deliveryRunsQuery = query(
               deliveryRunsCollection, 
@@ -441,6 +437,7 @@ export const useStatsData = (
             // Para unidades
             recentOrdersQuery = query(recentOrdersQuery, where('pharmacyUnitId', 'in', ids));
             deliveredOrdersQuery = query(deliveredOrdersQuery, where('pharmacyUnitId', 'in', ids));
+            ratingsQuery = query(ratingsQuery, where('pharmacyUnitId', 'in', ids));
             deliveryRunsQuery = query(
               deliveryRunsCollection,
               where('pharmacyUnitId', 'in', ids)
@@ -453,6 +450,7 @@ export const useStatsData = (
             mainQuery = query(mainCollection, where('__name__', '==', userUnitId));
             recentOrdersQuery = query(recentOrdersQuery, where('pharmacyUnitId', '==', userUnitId));
             deliveredOrdersQuery = query(deliveredOrdersQuery, where('pharmacyUnitId', '==', userUnitId));
+            ratingsQuery = query(ratingsQuery, where('pharmacyUnitId', '==', userUnitId));
             deliveryRunsQuery = query(
               deliveryRunsCollection,
               where('pharmacyUnitId', '==', userUnitId)
@@ -462,6 +460,7 @@ export const useStatsData = (
             mainQuery = query(mainCollection, where('__name__', 'in', ids));
             recentOrdersQuery = query(recentOrdersQuery, where('deliveryMan', 'in', ids));
             deliveredOrdersQuery = query(deliveredOrdersQuery, where('deliveryMan', 'in', ids));
+            ratingsQuery = query(ratingsQuery, where('deliveryMan', 'in', ids));
             // Agora buscando deliveryRuns pela unidade do gerente
             deliveryRunsQuery = query(
               deliveryRunsCollection,
@@ -478,6 +477,7 @@ export const useStatsData = (
           mainQuery = query(mainCollection, where('__name__', 'in', ids));
           recentOrdersQuery = query(recentOrdersQuery, where('deliveryMan', 'in', ids));
           deliveredOrdersQuery = query(deliveredOrdersQuery, where('deliveryMan', 'in', ids));
+          ratingsQuery = query(ratingsQuery, where('deliveryMan', 'in', ids));
           // Para entregadores, mantemos a busca por deliverymanId
           deliveryRunsQuery = query(
             deliveryRunsCollection,
@@ -502,13 +502,14 @@ export const useStatsData = (
         );
       }
 
-      return { mainQuery, recentOrdersQuery, deliveredOrdersQuery, deliveryRunsQuery };
+      return { mainQuery, recentOrdersQuery, deliveredOrdersQuery, deliveryRunsQuery, ratingsQuery };
     };
 
     const fetchData = async () => {
       try {
+        const totalStartTime = Date.now();
+        
         if (!userRole) {
-          console.log('Waiting for userRole...');
           return;
         }
 
@@ -516,23 +517,54 @@ export const useStatsData = (
           throw new Error('Nenhum ID fornecido para busca');
         }
 
-        const { mainQuery, recentOrdersQuery, deliveredOrdersQuery, deliveryRunsQuery } = configureQueries();
 
+        const queryConfigStartTime = Date.now();
+        const { mainQuery, recentOrdersQuery, deliveredOrdersQuery, deliveryRunsQuery, ratingsQuery } = configureQueries();
+
+        // Fetch inicial dos dados estáticos
+        const mainQueriesStartTime = Date.now();
+        
         const [
           mainSnapshot,
-          recentOrdersSnapshot,
           deliveredOrdersSnapshot,
           deliveryRunsSnapshot,
+          ratingsSnapshot,
           pharmacyUnitsSnapshot,
           deliverymenSnapshot
         ] = await Promise.all([
           getDocs(mainQuery),
-          getDocs(recentOrdersQuery),
           getDocs(deliveredOrdersQuery),
           getDocs(deliveryRunsQuery),
+          getDocs(ratingsQuery),
           getDocs(collection(db, 'pharmacyUnits')),
           getDocs(collection(db, 'deliverymen'))
-        ]);        const selectedData = mainSnapshot.docs.map(doc => ({
+        ]);
+
+
+        // Configurar listener em tempo real para pedidos recentes
+        const listenerStartTime = Date.now();
+        
+        const recentOrdersUnsubscriber = onSnapshot(
+          recentOrdersQuery,
+          (recentOrdersSnapshot) => {
+            const recentOrders = recentOrdersSnapshot.docs.map(mapOrderDoc);
+            
+            setData(prevData => ({
+              ...prevData,
+              recentOrders
+            }));
+          },
+          (error) => {
+            console.error('❌ [PERF][useStatsData] Error in real-time listener:', error);
+          }
+        );
+
+        // Adicionar o unsubscriber à lista
+        unsubscribersRef.current.push(recentOrdersUnsubscriber);
+
+        const dataProcessingStartTime = Date.now();
+        
+        const selectedData = mainSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as (Deliveryman | PharmacyUnit)[];
@@ -598,45 +630,80 @@ export const useStatsData = (
             isPending: data.status === 'Pendente'
           } as Order;
         };
-
-        const recentOrders = recentOrdersSnapshot.docs.map(mapOrderDoc);
+        
+        
         const deliveredOrders = deliveredOrdersSnapshot.docs.map(mapOrderDoc);
-
+        
+        // Processar pedidos com ratings (sem limite de data)
+        const ratingsOrders = ratingsSnapshot.docs.map(mapOrderDoc);
+        
+        if (type === 'unit') {
+          const unitOrders = deliveredOrders.filter(order => ids.includes(order.pharmacyUnitId));
+          const unitRatingsOrders = ratingsOrders.filter(order => ids.includes(order.pharmacyUnitId));
+        }
+        
+        const detailedStatsStartTime = Date.now();
+        
         const detailedStats = await calculateDetailedStats(
           selectedData,
           type,
-          deliveredOrders,
+          deliveredOrders, // Mantém deliveredOrders para outras métricas
           deliverymen,
           deliveryRuns,
-          userRole
+          userRole,
+          ratingsOrders // Passa ratingsOrders como parâmetro adicional para cálculo de ratings
         );
+        
 
-
+        const overallStatsStartTime = Date.now();
         const overallStats = calculateOverallStats(detailedStats, userRole);
         
+        const topMotorcyclesStartTime = Date.now();
         const topMotorcycles = calculateTopMotorcycles(deliveredOrders, type, ids);
 
+        // Calculate all deliverymen stats (only for unit type)
+        const deliverymenStatsStartTime = Date.now();
+        const allDeliverymenStats = type === 'unit' && ids.length === 1 
+          ? getAllDeliverymenStats(deliveredOrders, ids[0])
+          : [];
+
+        // Fetch inicial dos pedidos recentes (será atualizado pelo listener)
+        const recentOrdersStartTime = Date.now();
+        const initialRecentOrdersSnapshot = await getDocs(recentOrdersQuery);
+        const initialRecentOrders = initialRecentOrdersSnapshot.docs.map(mapOrderDoc);
+
+        const stateUpdateStartTime = Date.now();
+        
         setData({
           selectedData,
           detailedStats,
           overallStats,
           topMotorcycles,
-          recentOrders,
+          recentOrders: initialRecentOrders,
+          allDeliverymenStats,
           isLoading: false,
           hasError: false
         });
+        
+
 
       } catch (error) {
-        console.error('Erro ao carregar dados:', error);
+        console.error('❌ [PERF][useStatsData] Error loading stats data:', error);
+        
         setData(prev => ({ ...prev, isLoading: false, hasError: true }));
         
         const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar os dados';
         Alert.alert('Erro', errorMessage);
         navigation.goBack();
       }
-    };
-
+    };    
     fetchData();
+
+    // Cleanup function para remover listeners
+    return () => {
+      unsubscribersRef.current.forEach(unsubscribe => unsubscribe());
+      unsubscribersRef.current = [];
+    };
   }, [type, ids, userRole, userId, userUnitId, navigation, dateFilter]);
 
   return data;

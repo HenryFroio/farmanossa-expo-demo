@@ -1,14 +1,16 @@
 // src/components/StatsOverviewTab.tsx
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import OrderSelectionModal from './OrderSelectionModal';
 import PontoModal from './PontoModal';
 import PicoModal from './PicoModal';
 import FolhaPontoModal from './FolhaPontoModal';
+import RatingsModal from './RatingsModal';
 import styles from '../styles/statsScreenStyles';
 import { Order } from '../types/statsTypes'; // Import Order from statsTypes
 import { useNavigation } from '@react-navigation/native'; // Import useNavigation
+import { formatBrazilianDateTime } from '../utils/dateFormatter'; // Import date formatter
 
 interface StatsOverviewTabProps {
   type: string;
@@ -55,11 +57,11 @@ const RecentOrderItem = ({ order, onPress }: {
     style={styles.orderItem}
     onPress={() => onPress(order)}
     activeOpacity={0.7}
-  >
-    <View style={styles.orderHeader}>
+  >    
+  <View style={styles.orderHeader}>
       <Text style={styles.orderNumber}>Pedido #{order.id}</Text>
       <Text style={styles.orderDate}>
-        {new Date(order.date).toLocaleDateString()}
+        {formatBrazilianDateTime(order.date)}
       </Text>
     </View>
     <View style={styles.orderDetails}>
@@ -82,11 +84,38 @@ export const StatsOverviewTab: React.FC<StatsOverviewTabProps> = ({
   recentOrders = [],
   setSelectedOrder,
   ids // Destructure ids from props
-}) => {  const [isOrderSelectionVisible, setIsOrderSelectionVisible] = useState(false);
+}) => {  
+  const [isOrderSelectionVisible, setIsOrderSelectionVisible] = useState(false);
   const [isPontoModalVisible, setIsPontoModalVisible] = useState(false); // State for PontoModal
   const [isPicoModalVisible, setIsPicoModalVisible] = useState(false); // State for PicoModal
   const [isFolhaPontoModalVisible, setIsFolhaPontoModalVisible] = useState(false); // State for FolhaPontoModal
+  const [isRatingsModalVisible, setIsRatingsModalVisible] = useState(false); // State for RatingsModal
   const navigation = useNavigation(); // Initialize navigation
+
+  // Animação para o indicador de tempo real
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const createPulseAnimation = () => {
+      return Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.3,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ]);
+    };
+
+    const loopAnimation = Animated.loop(createPulseAnimation());
+    loopAnimation.start();
+
+    return () => loopAnimation.stop();
+  }, [pulseAnim]);
 
   // Handle order click
   const handleOrderPress = (order: Order) => {
@@ -210,7 +239,17 @@ export const StatsOverviewTab: React.FC<StatsOverviewTabProps> = ({
       )}
 
       <View style={styles.ratingCard}>
-        <Text style={styles.cardTitle}>Avaliações</Text>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Avaliações</Text>
+          {totalRatings > 0 && (
+            <TouchableOpacity 
+              onPress={() => setIsRatingsModalVisible(true)} 
+              style={styles.seeMoreButton}
+            >
+              <Text style={styles.seeMoreButtonText}>Ver mais</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.ratingContent}>
           <RatingStars rating={averageRating} />
           <Text style={styles.averageRating}>{averageRating.toFixed(1)}</Text>
@@ -218,11 +257,16 @@ export const StatsOverviewTab: React.FC<StatsOverviewTabProps> = ({
             {totalRatings} {totalRatings === 1 ? 'avaliação' : 'avaliações'}
           </Text>
         </View>
-      </View>
-
+      </View>      
       <View style={styles.recentOrdersCard}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Últimos Pedidos</Text>
+          <View style={styles.recentOrdersTitle}>
+            <Text style={styles.cardTitle}>Últimos Pedidos</Text>
+            <View style={styles.realtimeIndicator}>
+              <Animated.View style={[styles.realtimeDot, { transform: [{ scale: pulseAnim }] }]} />
+              <Text style={styles.realtimeText}>Em tempo real</Text>
+            </View>
+          </View>
           <TouchableOpacity onPress={handleSeeMoreOrders} style={styles.seeMoreButton}>
             <Text style={styles.seeMoreButtonText}>Ver mais</Text>
           </TouchableOpacity>
@@ -263,6 +307,14 @@ export const StatsOverviewTab: React.FC<StatsOverviewTabProps> = ({
         onClose={() => setIsFolhaPontoModalVisible(false)}
         unitId={ids && ids.length > 0 ? ids[0] : undefined}
         unitName={selectedData && selectedData.length > 0 ? selectedData[0].name : undefined}
+      />
+      
+      <RatingsModal
+        visible={isRatingsModalVisible}
+        onClose={() => setIsRatingsModalVisible(false)}
+        type={type as 'deliveryman' | 'unit'}
+        itemId={ids && ids.length > 0 ? ids[0] : ''}
+        itemName={selectedData && selectedData.length > 0 ? selectedData[0].name || '' : ''}
       />
     </View>
   );

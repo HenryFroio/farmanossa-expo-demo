@@ -14,6 +14,7 @@ import SignUpScreen from '../screens/SignUpScreen';
 import EmployeesScreen from '../screens/EmployeesScreen';
 import VehiclesScreen from '../screens/VehiclesScreen';
 import OrdersScreen from '../screens/OrdersScreen'; // Import the new screen
+import FormsScreen from '../screens/FormsScreen';
 
 const Stack = createStackNavigator();
 
@@ -28,6 +29,7 @@ export type RootStackParamList = {
   Anon: undefined;
   Employees: undefined;
   Vehicles: undefined;
+  Forms: undefined;
   OrdersScreen: { type: 'deliveryman' | 'unit'; ids: string[]; initialDate: string };
   OrderDetailsScreen: { orderId: string };
 };
@@ -56,6 +58,7 @@ const AppNavigator = () => {
         <Stack.Screen name="Anon" component={AnonScreen} />
         <Stack.Screen name="Employees" component={EmployeesScreen} />
         <Stack.Screen name="Vehicles" component={VehiclesScreen} />
+        <Stack.Screen name="Forms" component={FormsScreen} />
         <Stack.Screen 
           name="OrdersScreen" 
           component={OrdersScreen} 

@@ -1,5 +1,13 @@
 // headerStyles.ts
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+// Função para calcular tamanho responsivo
+const responsiveSize = (baseSize: number) => {
+  const scale = Math.min(width / 375, 1.3); // Limita o scale máximo a 1.3
+  return Math.round(baseSize * scale);
+};
 
 // Aproveitando as cores do design system
 const colors = {
@@ -9,23 +17,24 @@ const colors = {
 
 export default StyleSheet.create({
   headerContainer: {
-    position: 'relative', // Para garantir que os elementos filhos sejam posicionados corretamente,
-    zIndex:-1
+    position: 'relative',
+    zIndex: -1,
   },
   headerLogo: {
-    width: 60,
-    height: 60,
+    width: responsiveSize(50),
+    height: responsiveSize(50),
     resizeMode: 'contain',
-    tintColor: colors.white, // Caso a logo precise ser branca
+    tintColor: colors.white,
   },
   headerTitleContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 8,
+    marginHorizontal: 4,
   },
   headerTitle: {
-    // Não precisamos sobrescrever muitas propriedades pois já estão definidas no styles compartilhado
-    // Apenas ajustamos o que for necessário para o novo layout
     textAlign: 'center',
+    flexShrink: 1,
   },
 });

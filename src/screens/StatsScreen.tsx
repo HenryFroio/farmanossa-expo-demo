@@ -19,7 +19,9 @@ import { StatsTabs } from '../components/StatsTabs';
 import { StatsOverviewTab } from '../components/StatsOverviewTab';
 import { StatsDetailsTab } from '../components/StatsDetailsTab';
 import { useAuth } from '../hooks/useAuth';
-import { useStatsData } from '../hooks/useStatsData';
+// HÍBRIDO: useStatsData (Firestore) para Overview + useStatsDataBigQuery para Details
+import { useStatsData } from '../hooks/useStatsData'; // Overview Tab: tempo real
+import { useStatsDataBigQuery } from '../hooks/useStatsDataBigQuery'; // Details Tab: analytics
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import styles from '../styles/statsScreenStyles';
 import { StatsScreenProps, TabType, Order } from '../types/statsTypes';
@@ -27,7 +29,7 @@ import { UserRole } from '../utils/statsUtils';
 import { Trash2 } from 'lucide-react-native';
 
 const StatsScreen: React.FC<StatsScreenProps> = ({ route }) => {
-  const { type, ids, managerUnit } = route.params;
+  const { type, ids, managerUnit, allDeliverymenStats: allDeliverymenStatsFromRoute } = route.params;
   const navigation = useNavigation();
   const { 
     user, 
@@ -42,6 +44,9 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ route }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [confirmationId, setConfirmationId] = useState('');
   const [deleteError, setDeleteError] = useState('');
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [navigationStartTime, setNavigationStartTime] = useState<number | null>(null);
+  const [isDataReady, setIsDataReady] = useState(true);
 
   // Função auxiliar para ajustar a data para o início do dia
   const getStartOfDay = (date: Date): Date => {
@@ -58,19 +63,12 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ route }) => {
   };
 
   const [dateFilter, setDateFilter] = useState<{ startDate: Date; endDate: Date }>({
-    startDate: getStartOfDay(new Date(new Date().setDate(1))), // Primeiro dia do mês atual, início do dia
-    endDate: getEndOfDay(new Date()) // Dia atual, fim do dia
+    startDate: getStartOfDay(new Date()), // Início do dia atual (período diário)
+    endDate: getEndOfDay(new Date()) // Fim do dia atual (período diário)
   });
 
-  const { 
-    selectedData,
-    detailedStats,
-    overallStats,
-    topMotorcycles,
-    recentOrders,
-    isLoading,
-    hasError
-  } = useStatsData(
+  // OVERVIEW TAB: Sempre carrega Firestore para dados em tempo real
+  const firestoreData = useStatsData(
     type,
     ids,
     userRole as UserRole,
@@ -80,10 +78,66 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ route }) => {
     dateFilter
   );
 
+  // DETAILS TAB: Só carrega BigQuery quando tab Details está ativa
+  const bigQueryData = useStatsDataBigQuery(
+    type,
+    activeTab === 'details' ? ids : [], // Só busca quando tab Details está ativa
+    userRole as UserRole,
+    user?.uid || null,
+    managerUnit ?? null,
+    navigation,
+    dateFilter
+  );
+
+  // Usar dados apropriados baseado na tab ativa
+  const activeData = activeTab === 'overview' ? firestoreData : bigQueryData;
+  
+  // selectedData sempre vem do Firestore (tem name + id corretos)
+  // Outros dados variam conforme a tab
+  const { 
+    detailedStats,
+    overallStats,
+    topMotorcycles,
+    recentOrders,
+    allDeliverymenStats: allDeliverymenStatsFromHook,
+    isLoading,
+    hasError
+  } = activeData;
+  
+  // SEMPRE usar selectedData do Firestore (não muda entre tabs)
+  const selectedData = firestoreData.selectedData;
+
+  // Usar allDeliverymenStats dos route params se disponível (vindo da AdminScreen)
+  // Caso contrário, usar do hook (fallback)
+  const allDeliverymenStats = allDeliverymenStatsFromRoute || allDeliverymenStatsFromHook;
+
+  // Debug: Verificar de onde vieram os dados
+  React.useEffect(() => {
+    if (allDeliverymenStatsFromRoute) {
+    } else if (allDeliverymenStatsFromHook) {
+    }
+  }, [allDeliverymenStatsFromRoute, allDeliverymenStatsFromHook]);
+
+  // Monitor data loading progress
+  React.useEffect(() => {
+  }, [isLoading, hasError, selectedData, detailedStats, overallStats, topMotorcycles, recentOrders, allDeliverymenStats]);
+
+  // Track navigation timing
+  React.useEffect(() => {
+    const navigationTime = Date.now();
+    setNavigationStartTime(navigationTime);
+    setIsNavigating(true);
+    
+    return () => {
+    };
+  }, [type, ids]);
+
   // Adicionado para forçar a atualização dos dados quando a aba 'details' é ativada.
   // Isso é feito recriando a referência do objeto dateFilter,
   // o que dispara o useEffect em useStatsData.
   React.useEffect(() => {
+    const tabChangeStartTime = Date.now();
+    
     if (activeTab === 'details') {
       // Usamos o valor atual do filtro para criar uma nova instância do objeto.
       // Isso é suficiente para o React detectar uma mudança na dependência `dateFilter`
@@ -92,19 +146,80 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ route }) => {
         startDate: getStartOfDay(new Date(currentFilter.startDate)), // Garante nova instância e ajuste de hora
         endDate: getEndOfDay(new Date(currentFilter.endDate))     // Garante nova instância e ajuste de hora
       }));
+    } else {
     }
   }, [activeTab]); // A dependência é activeTab
+
+  // Reset para aba 'overview' quando mudar para estatísticas de entregador
+  React.useEffect(() => {
+    const typeChangeStartTime = Date.now();
+    
+    if (type === 'deliveryman') {
+      setActiveTab('overview');
+      setIsDataReady(false); // Mark data as not ready when switching to deliveryman
+    }
+  }, [type, ids]); // Dependências: type e ids
+
+  // Marcar dados como prontos quando temos dados de entregador válidos
+  React.useEffect(() => {
+    const readinessCheckStartTime = Date.now();
+    
+    
+    if (type === 'deliveryman' && !isLoading && detailedStats && detailedStats.length > 0 && selectedData && selectedData.length > 0) {
+      // Verificar se temos dados de status do entregador (indicador de que dados estão completos)
+      const hasDeliverymanStatus = selectedData.some(data => 
+        (data as any).status !== undefined && (data as any).status !== null
+      );
+      
+      
+      if (hasDeliverymanStatus) {
+        // Pequeno delay para garantir que o componente renderizou
+        setTimeout(() => {
+          setIsDataReady(true);
+        }, 100);
+      }
+    } else if (type === 'unit') {
+      setIsDataReady(true); // Para unidades, sempre marcar como pronto
+    }
+    
+  }, [type, isLoading, detailedStats, selectedData]);
+
+  // Reset isNavigating quando os dados terminarem de carregar com tempo mínimo
+  React.useEffect(() => {
+    const completionCheckStartTime = Date.now();
+    
+    
+    if (!isLoading && isNavigating && isDataReady && navigationStartTime) {
+      const minLoadingTime = 1000; // Minimum 1 second loading
+      const elapsedTime = Date.now() - navigationStartTime;
+      const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+      
+      // Also check if we have actual data
+      const hasData = detailedStats && detailedStats.length > 0;
+      
+      
+      if (hasData) {
+        setTimeout(() => {
+          setIsNavigating(false);
+          setNavigationStartTime(null);
+        }, remainingTime);
+      }
+    }
+    
+  }, [isLoading, isNavigating, isDataReady, navigationStartTime, detailedStats]);
+
+  // Debug effect to monitor activeTab changes
+  React.useEffect(() => {
+  }, [activeTab]);
 
   const openBottomSheet = React.useCallback(() => {
     bottomSheetRef.current?.expand();
   }, []);
 
   const handleDateFilterChange = (start: Date, end: Date) => {
-    console.log('Date filter changed from picker:', { startDate: start, endDate: end });
     // Ajusta as datas recebidas do picker para o início e fim do dia respectivamente
     const adjustedStartDate = getStartOfDay(start);
     const adjustedEndDate = getEndOfDay(end);
-    console.log('Adjusted date filter:', { startDate: adjustedStartDate, endDate: adjustedEndDate });
     setDateFilter({ startDate: adjustedStartDate, endDate: adjustedEndDate });
   };
 
@@ -116,6 +231,16 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ route }) => {
   
   const handleCloseBottomSheet = () => {
     setSelectedOrder(null);
+  };
+
+  const navigateToDeliverymanStats = (deliverymanId: string) => {
+    setIsNavigating(true);
+    setNavigationStartTime(Date.now());
+    (navigation as any).navigate('Stats', { 
+      type: 'deliveryman', 
+      ids: [deliverymanId],
+      managerUnit
+    });
   };
 
   const handleConfirmDelete = async () => {
@@ -175,11 +300,23 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ route }) => {
     );
   }
 
-  if (isLoading) {
+  // Show loading em 2 casos:
+  // 1. Primeira carga (navegação inicial) - sem dados ainda
+  // 2. Navegando de outra tela
+  // NÃO mostrar loading ao mudar de aba (overview → details) - skeleton cuida disso
+  const shouldShowLoading = (isLoading && !detailedStats) || isNavigating || 
+    (type === 'deliveryman' && !isDataReady);
+
+  if (shouldShowLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FF4B2B" />
-        <Text style={styles.loadingText}>Carregando estatísticas...</Text>
+        <Text style={styles.loadingText}>
+          {isNavigating 
+            ? `Carregando estatísticas ${type === 'deliveryman' ? 'do entregador' : 'da unidade'}...` 
+            : 'Carregando estatísticas...'
+          }
+        </Text>
       </View>
     );
   }
@@ -212,8 +349,13 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ route }) => {
               detailedStats={detailedStats} 
               type={type}
               userRole={userRole}
+              allDeliverymenStats={allDeliverymenStats}
+              onNavigateToDeliveryman={navigateToDeliverymanStats}
               onDateFilterChange={handleDateFilterChange}
               currentDateFilter={dateFilter}
+              bottomSheetRef={bottomSheetRef}
+              setSelectedOrder={setSelectedOrder}
+              ids={ids}
             />
           )}
           

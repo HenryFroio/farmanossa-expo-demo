@@ -109,10 +109,25 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     color: colors.text,
+    flex: 1,
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
     paddingBottom: 10,
     borderBottomWidth: 2,
     borderBottomColor: `${colors.primary}20`,
+  },
+  sectionPeriod: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.primary,
+    backgroundColor: `${colors.primary}10`,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   unitItem: {
     flexDirection: 'row',
@@ -243,6 +258,85 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: '#4A5568',
     fontSize: 14,
+  },
+  // Period Toggle Styles
+  periodToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.cardBackground,
+    borderRadius: 12,
+    padding: 4,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    ...shadows.small,
+  },
+  periodToggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  periodToggleButtonActive: {
+    backgroundColor: colors.primary,
+    ...shadows.small,
+  },
+  periodToggleButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: colors.border,
+  },
+  periodToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textLight,
+  },
+  periodToggleTextActive: {
+    color: colors.white,
+  },
+  // Period Loading Styles
+  periodLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  periodLoadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: colors.textLight,
+    fontWeight: '500',
+  },
+  periodLoadingTextContainer: {
+    marginLeft: 8,
+    flex: 1,
+  },
+  periodLoadingSubText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontStyle: 'italic',
+    opacity: 0.8,
+  },
+  loadingTextContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingMainText: {
+    fontSize: 16,
+    color: colors.text,
+    textAlign: 'center',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  loadingSubText: {
+    fontSize: 13,
+    color: colors.primary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    opacity: 0.8,
   },
 });
 

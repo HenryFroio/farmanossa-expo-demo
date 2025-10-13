@@ -20,12 +20,12 @@ export default StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
+  },  modalContent: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: height * 0.95,
+    minHeight: height * 0.9, // Altura mínima de 90% para comportar todo o conteúdo
     width: '100%',
     shadowColor: '#000',
     shadowOffset: {
@@ -60,9 +60,9 @@ export default StyleSheet.create({
   },
   closeButton: {
     padding: 4,
-  },
-  formContainer: {
+  },  formContainer: {
     padding: 16,
+    flex: 1,
   },
   inputGroup: {
     marginBottom: 16,

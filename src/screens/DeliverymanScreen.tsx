@@ -22,6 +22,7 @@ import {
   OrdersBottomSheet, 
   FinishDeliveryBottomSheet 
 } from '../components/DeliveryBottomSheets';
+import { MotorcycleInspectionForm, InspectionFormData } from '../components/MotorcycleInspectionForm';
 import CustomDrawer from '../components/CustomDrawer';
 import styles from '../styles/deliverymanStyles';
 import headerStyles from '../styles/headerStyles';
@@ -54,12 +55,17 @@ const DeliverymanScreen: React.FC = () => {
     setDeliverymanOrders,
     clearDeliverymanLicensePlate,
     updateDeliverymanUnit,
+    cancelUnitSelection,
     fetchAvailablePreparingOrders,
     loadingPreparingOrders,
+    isLoadingSecondaryData,
     hasMoreOriginOrders,
     hasMoreTransferOrders,
     createOrUpdatePonto,
-    getPontoData
+    getPontoData,
+    saveInspectionForm,
+    updateInspectionFormFinalTime,
+    loadSecondaryData
    } = useDeliveryman();
 
   const [status, setStatus] = useState<DeliveryStatus>('Fora de expediente');
@@ -79,12 +85,19 @@ const DeliverymanScreen: React.FC = () => {
   const [syncAttempted, setSyncAttempted] = useState(false);  const [isFinishingRun, setIsFinishingRun] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [deliveryJustStarted, setDeliveryJustStarted] = useState(false);
+  const [currentInspectionFormId, setCurrentInspectionFormId] = useState<string | null>(null);
+  const [isFinishingExpedient, setIsFinishingExpedient] = useState(false);
+  const [isStartingWork, setIsStartingWork] = useState(false);
+  const [isSelectingUnit, setIsSelectingUnit] = useState(false);
+  const [isRestoringUnit, setIsRestoringUnit] = useState(false);
+  const [isConfirmingCurrentUnit, setIsConfirmingCurrentUnit] = useState(false);
 
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const syncInProgressRef = useRef(false);
 
   const motorcycleBottomSheetRef = useRef<BottomSheet>(null);
   const unitSelectionBottomSheetRef = useRef<BottomSheet>(null);
+  const inspectionFormBottomSheetRef = useRef<BottomSheet>(null);
   const ordersBottomSheetRef = useRef<BottomSheet>(null);
   const finishDeliveryBottomSheetRef = useRef<BottomSheet>(null);
   const { signOut } = useAuth();
@@ -103,17 +116,32 @@ const DeliverymanScreen: React.FC = () => {
 
   useEffect(() => {
     if (deliveryman) {
+      console.log('[DeliverymanScreen] 📦 Deliveryman data received:', {
+        status: deliveryman.status,
+        licensePlate: deliveryman.licensePlate,
+        pharmacyUnitId: deliveryman.pharmacyUnitId
+      });
+      
       const previousStatus = status;
       setStatus(deliveryman.status as DeliveryStatus);
       setIsWorking(deliveryman.status !== 'Fora de expediente');
-      setSelectedMotorcycle(deliveryman.licensePlate || null);
+      
+      // Find motorcycle ID based on licensePlate
+      if (deliveryman.licensePlate) {
+        const motorcycle = filteredMotorcycles.find(m => m.plate === deliveryman.licensePlate);
+        setSelectedMotorcycle(motorcycle?.id || null);
+        console.log('[DeliverymanScreen] 🏍️ Motorcycle found:', motorcycle?.plate);
+      } else {
+        setSelectedMotorcycle(null);
+        console.log('[DeliverymanScreen] 🏍️ No motorcycle selected');
+      }
       
       if (previousStatus !== deliveryman.status && deliveryman.status === 'Aguardando pedido') {
         console.log('[DeliverymanScreen] Status changed to "Aguardando pedido", resetting sync flags');
         setSyncAttempted(false);
       }
     }
-  }, [deliveryman]);
+  }, [deliveryman, filteredMotorcycles]);
   useEffect(() => {
     if (syncInProgressRef.current || syncAttempted) return;
 
@@ -230,6 +258,34 @@ const DeliverymanScreen: React.FC = () => {
       }
     };
   }, [deliveryman?.id, deliveryman?.status]);
+
+  // Monitor dataLoading state changes
+  useEffect(() => {
+    console.log('[DeliverymanScreen] ⏳ dataLoading changed:', dataLoading);
+    if (!dataLoading) {
+      console.log('[DeliverymanScreen] ✅ INITIAL DATA LOADING COMPLETED');
+      console.log('[DeliverymanScreen] 📊 Current state:', {
+        hasDeliveryman: !!deliveryman,
+        hasMotorcycles: filteredMotorcycles.length > 0,
+        hasPharmacyUnit: !!currentPharmacyUnit,
+        motorcyclesCount: filteredMotorcycles.length,
+        pharmacyUnit: currentPharmacyUnit?.name
+      });
+    }
+  }, [dataLoading, deliveryman, filteredMotorcycles, currentPharmacyUnit]);
+
+  // Monitor isLoadingSecondaryData state changes
+  useEffect(() => {
+    console.log('[DeliverymanScreen] ⏳ isLoadingSecondaryData changed:', isLoadingSecondaryData);
+    if (!isLoadingSecondaryData && !dataLoading) {
+      console.log('[DeliverymanScreen] ✅ ALL DATA LOADING COMPLETED (Primary + Secondary)');
+      console.log('[DeliverymanScreen] 📊 Final state:', {
+        motorcyclesCount: filteredMotorcycles.length,
+        pharmacyUnit: currentPharmacyUnit?.name,
+        ordersCount: filteredOrders.length
+      });
+    }
+  }, [isLoadingSecondaryData, dataLoading, filteredMotorcycles, currentPharmacyUnit, filteredOrders]);
 
   const syncActiveOrders = useCallback(async () => {
     try {
@@ -439,6 +495,21 @@ const DeliverymanScreen: React.FC = () => {
   };
 
   const getButtonText = () => {
+    // Show loading text when restoring unit
+    if (isRestoringUnit) {
+      return 'Restaurando unidade...';
+    }
+    
+    // Show loading text when initial data is loading
+    if (dataLoading) {
+      return 'Carregando...';
+    }
+    
+    // Show loading text when secondary data is still loading
+    if (isLoadingSecondaryData) {
+      return 'Carregando...';
+    }
+    
     switch (status) {
       case 'Fora de expediente':
         return 'Iniciar Expediente';
@@ -535,26 +606,65 @@ const DeliverymanScreen: React.FC = () => {
     }
   };
 
-  const handleUnitConfirmation = () => {
-    unitSelectionBottomSheetRef.current?.close();
-    setUnitConfirmed(true);
-    motorcycleBottomSheetRef.current?.expand();
+  const handleUnitConfirmation = async () => {
+    try {
+      setIsConfirmingCurrentUnit(true); // Set loading for confirming current unit
+      // Load secondary data for the current unit
+      if (deliveryman?.pharmacyUnitId) {
+        await loadSecondaryData(deliveryman.pharmacyUnitId);
+      }
+      unitSelectionBottomSheetRef.current?.close();
+      setUnitConfirmed(true);
+      motorcycleBottomSheetRef.current?.expand();
+    } catch (error) {
+      console.error('Erro ao confirmar unidade:', error);
+      Alert.alert('Erro', 'Não foi possível carregar os dados da unidade');
+    } finally {
+      setIsConfirmingCurrentUnit(false);
+    }
   };
 
   const handleUnitSelection = async (newUnitId: string) => {
+    // Set loading state immediately for instant visual feedback
+    setIsSelectingUnit(true);
+    
+    // Allow React to render the loading state before starting async operations
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
     try {
       await updateDeliverymanUnit(newUnitId);
+      // Load secondary data for the selected unit
+      await loadSecondaryData(newUnitId);
       unitSelectionBottomSheetRef.current?.close();
       setUnitConfirmed(true);
       motorcycleBottomSheetRef.current?.expand();
     } catch (error) {
       console.error('Erro ao selecionar unidade:', error);
       Alert.alert('Erro', 'Não foi possível selecionar a unidade');
+    } finally {
+      setIsSelectingUnit(false);
     }
   };
+  
+  const handleUnitSelectionCancel = useCallback(async () => {
+    setIsRestoringUnit(true);
+    try {
+      await cancelUnitSelection();
+    } catch (error) {
+      console.error('[DeliverymanScreen] Error canceling unit selection:', error);
+    } finally {
+      setIsRestoringUnit(false);
+    }
+  }, [cancelUnitSelection]);
+  
   const toggleWorkStatus = async () => {
+    if (isFinishingExpedient) return; // Previne múltiplos cliques
+    
     try {
       if (isWorking) {
+        setIsFinishingExpedient(true);
+        console.log('[DeliverymanScreen] Iniciando finalização do expediente');
+        
         if (currentRunId && status === 'Retornando a unidade') {
           const totalDistance = await endDeliveryRun();
           Alert.alert(
@@ -563,14 +673,30 @@ const DeliverymanScreen: React.FC = () => {
           );
         }
         
+        // Atualizar hora final no formulário de inspeção se existe
+        if (currentInspectionFormId) {
+          try {
+            const finalTime = new Date().toLocaleTimeString('pt-BR', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              timeZone: 'America/Sao_Paulo' 
+            });
+            await updateInspectionFormFinalTime(currentInspectionFormId, finalTime);
+          } catch (error) {
+            console.error('Erro ao atualizar hora final do formulário:', error);
+          }
+        }
+        
         // Registrar saída do expediente
         await createOrUpdatePonto('saida');
         
+        console.log('[DeliverymanScreen] Atualizando status e limpando dados');
         await Promise.all([
           updateDeliverymanStatus('Fora de expediente', []),
           clearDeliverymanLicensePlate()
         ]);
         
+        console.log('[DeliverymanScreen] Resetando estados locais');
         setIsWorking(false);
         setSelectedMotorcycle(null);
         setSelectedOrders([]);
@@ -578,22 +704,66 @@ const DeliverymanScreen: React.FC = () => {
         setStatus('Fora de expediente');
         setCurrentRunId(null);
         setUnitConfirmed(false);
+        setCurrentInspectionFormId(null);
+        
+        console.log('[DeliverymanScreen] Expediente finalizado com sucesso');
       } else {
         unitSelectionBottomSheetRef.current?.expand();
       }
     } catch (error) {
       console.error('Erro ao alterar status de trabalho:', error);
       Alert.alert('Erro', 'Não foi possível alterar o status de trabalho');
+    } finally {
+      // Aguardar um tempo para que os logs de "Cleared license plate" apareçam
+      setTimeout(() => {
+        setIsFinishingExpedient(false);
+        console.log('[DeliverymanScreen] Loading de finalização removido');
+      }, 2000);
     }
   };    const startWork = useCallback(async () => {
     if (selectedMotorcycle) {
+      setIsStartingWork(true);
       try {
-        // Registrar entrada do expediente com a motocicleta selecionada
-        await createOrUpdatePonto('entrada', selectedMotorcycle);
+        // Verificar se a placa contém 'BIKE' - se contém, pode prosseguir diretamente
+        const selectedMotorcycleData = filteredMotorcycles.find(m => m.id === selectedMotorcycle);
+        const isChecklistRequired = selectedMotorcycleData && !selectedMotorcycleData.plate.toUpperCase().includes('BIKE');
+        
+        if (isChecklistRequired) {
+          // Fechar o modal de motocicleta e abrir o formulário de inspeção
+          motorcycleBottomSheetRef.current?.close();
+          setTimeout(() => {
+            inspectionFormBottomSheetRef.current?.expand();
+          }, 300);
+          return;
+        }
+        
+        // Se é BIKE ou não precisa de checklist, iniciar expediente diretamente
+        await startWorkWithoutInspection();
+      } catch (error) {
+        console.error('Erro ao iniciar expediente:', error);
+        Alert.alert('Erro', 'Não foi possível iniciar o expediente');
+      } finally {
+        setIsStartingWork(false);
+      }
+    }
+  }, [selectedMotorcycle, filteredMotorcycles]);
+
+  const startWorkWithoutInspection = useCallback(async () => {
+    if (selectedMotorcycle) {
+      try {
+        // Buscar a placa da motocicleta selecionada
+        const motorcycle = filteredMotorcycles.find(m => m.id === selectedMotorcycle);
+        if (!motorcycle) {
+          Alert.alert('Erro', 'Motocicleta não encontrada');
+          return;
+        }
+        
+        // Registrar entrada do expediente com a placa da motocicleta
+        await createOrUpdatePonto('entrada', motorcycle.plate);
         
         await Promise.all([
           updateDeliverymanStatus('Aguardando pedido', []),
-          updateDeliverymanLicensePlate(selectedMotorcycle)
+          updateDeliverymanLicensePlate(motorcycle.plate)
         ]);
         setIsWorking(true);
         setStatus('Aguardando pedido');
@@ -603,7 +773,45 @@ const DeliverymanScreen: React.FC = () => {
         Alert.alert('Erro', 'Não foi possível iniciar o expediente');
       }
     }
-  }, [selectedMotorcycle, updateDeliverymanStatus, updateDeliverymanLicensePlate, createOrUpdatePonto]);
+  }, [selectedMotorcycle, filteredMotorcycles, updateDeliverymanStatus, updateDeliverymanLicensePlate, createOrUpdatePonto]);
+
+  const handleInspectionFormSubmit = useCallback(async (formData: InspectionFormData, formId: string) => {
+    try {
+      // Salvar o ID do formulário
+      setCurrentInspectionFormId(formId);
+      
+      // Registrar entrada do expediente com a motocicleta selecionada
+      if (selectedMotorcycle) {
+        const motorcycle = filteredMotorcycles.find(m => m.id === selectedMotorcycle);
+        if (motorcycle) {
+          await createOrUpdatePonto('entrada', motorcycle.plate);
+          
+          await Promise.all([
+            updateDeliverymanStatus('Aguardando pedido', []),
+            updateDeliverymanLicensePlate(motorcycle.plate)
+          ]);
+          setIsWorking(true);
+          setStatus('Aguardando pedido');
+        }
+      }
+      
+      console.log('Formulário de inspeção salvo e expediente iniciado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao processar formulário de inspeção:', error);
+      Alert.alert('Erro', 'Não foi possível iniciar o expediente. Tente novamente.');
+    }
+  }, [selectedMotorcycle, filteredMotorcycles, createOrUpdatePonto, updateDeliverymanStatus, updateDeliverymanLicensePlate]);
+
+  const handleInspectionFormClose = useCallback(async () => {
+    inspectionFormBottomSheetRef.current?.close();
+    await handleUnitSelectionCancel();
+  }, [handleUnitSelectionCancel]);
+
+  const handleInspectionFormAfterClose = useCallback(() => {
+    console.log('[DeliverymanScreen] Resetando formulário após fechamento...');
+    // Aqui podemos adicionar lógica adicional se necessário
+    // O formulário se resetará automaticamente
+  }, []);
   
   const refreshAvailableOrders = useCallback(async () => {
     if (deliveryman?.pharmacyUnitId) {
@@ -808,7 +1016,11 @@ const DeliverymanScreen: React.FC = () => {
           </View>
           
           <View style={headerStyles.headerTitleContainer}>
-            <Text style={[styles.greeting, headerStyles.headerTitle]}>
+            <Text 
+              style={[styles.greeting, headerStyles.headerTitle]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               Olá, {deliveryman.name.split(' ')[0]}
             </Text>
           </View>
@@ -945,22 +1157,35 @@ const DeliverymanScreen: React.FC = () => {
           )}
           <View style={styles.buttonContainer}>
             <TouchableOpacity
-              style={[styles.button, isFinishingRun && styles.buttonDisabled]}
+              style={[styles.button, (isFinishingRun || isRestoringUnit || dataLoading) && styles.buttonDisabled]}
               onPress={handleStatusUpdate}
-              disabled={isFinishingRun}
+              disabled={isFinishingRun || isRestoringUnit || dataLoading}
             >
-              <Text style={styles.buttonText}>
-                {isFinishingRun && status === 'Retornando a unidade' ? 'Finalizando...' : getButtonText()}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                {(isLoadingSecondaryData || isRestoringUnit || dataLoading) && !isFinishingRun && (
+                  <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                )}
+                <Text style={styles.buttonText}>
+                  {isFinishingRun && status === 'Retornando a unidade' ? 'Finalizando...' : getButtonText()}
+                </Text>
+              </View>
             </TouchableOpacity>
   
             {status === 'Aguardando pedido' && (
               <Animated.View style={{ transform: [{ scale }] }}>
                 <TouchableOpacity 
-                  style={styles.workButton} 
+                  style={[styles.workButton, isFinishingExpedient && styles.buttonDisabled]} 
                   onPress={toggleWorkStatus}
+                  disabled={isFinishingExpedient}
                 >
-                  <Text style={styles.workButtonText}>Finalizar Expediente</Text>
+                  {isFinishingExpedient ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.workButtonText}>Finalizando Expediente...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.workButtonText}>Finalizar Expediente</Text>
+                  )}
                 </TouchableOpacity>
               </Animated.View>
             )}
@@ -973,6 +1198,8 @@ const DeliverymanScreen: React.FC = () => {
           selectedMotorcycle={selectedMotorcycle}
           setSelectedMotorcycle={setSelectedMotorcycle}
           startWork={startWork}
+          isStartingWork={isStartingWork}
+          onClose={handleUnitSelectionCancel}
         />
 
         <UnitSelectionBottomSheet
@@ -980,6 +1207,9 @@ const DeliverymanScreen: React.FC = () => {
           currentUnit={deliveryman.pharmacyUnitId}
           onConfirmCurrentUnit={handleUnitConfirmation}
           onSelectNewUnit={handleUnitSelection}
+          onClose={handleUnitSelectionCancel}
+          isConfirmingUnit={isConfirmingCurrentUnit}
+          isSelectingNewUnit={isSelectingUnit}
         />
   
         <OrdersBottomSheet
@@ -1004,6 +1234,19 @@ const DeliverymanScreen: React.FC = () => {
           activeOrders={activeOrders as any}
           finishDelivery={finishDelivery}
           cancelDelivery={cancelDelivery}
+        />
+
+        <MotorcycleInspectionForm
+          bottomSheetRef={inspectionFormBottomSheetRef}
+          deliverymanName={deliveryman?.name || ''}
+          motorcyclePlate={filteredMotorcycles.find(m => m.id === selectedMotorcycle)?.plate || ''}
+          motorcycleId={selectedMotorcycle || ''}
+          pharmacyUnitName={currentPharmacyUnit?.name || ''}
+          deliverymanId={deliveryman?.id || ''}
+          pharmacyUnitId={deliveryman?.pharmacyUnitId || ''}
+          onSubmit={handleInspectionFormSubmit}
+          onClose={handleInspectionFormClose}
+          onAfterClose={handleInspectionFormAfterClose}
         />
   
         <CustomDrawer 

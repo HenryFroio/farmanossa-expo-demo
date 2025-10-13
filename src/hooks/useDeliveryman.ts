@@ -17,10 +17,12 @@ import {
   orderBy, // Added import
   limit, // Added import
   startAfter, // Added import
-  setDoc // Added for ponto creation
+  setDoc, // Added for ponto creation
+  addDoc // Added for forms creation
 } from 'firebase/firestore';
 import { useState, useEffect, useRef, useCallback } from 'react'; // Import useState, useEffect, useRef, useCallback
 import { useAuth } from './useAuth'; // Assuming useAuth provides user info
+import { InspectionFormData } from '../components/MotorcycleInspectionForm';
 
 interface Location {
   latitude: number;
@@ -51,6 +53,8 @@ export interface Motorcycle {
   id: string;
   plate: string;
   pharmacyUnitId: string;
+  km: number;
+  nextMaintenanceKm?: number;
 }
 
 export interface Order {
@@ -122,7 +126,15 @@ export const useDeliveryman = () => {
   const [loadingPreparingOrders, setLoadingPreparingOrders] = useState(false);
   const [hasMoreOriginOrders, setHasMoreOriginOrders] = useState(true);
   const [hasMoreTransferOrders, setHasMoreTransferOrders] = useState(true);
+  
+  // State for secondary loading (motorcycles, pharmacy unit, etc.)
+  const [isLoadingSecondaryData, setIsLoadingSecondaryData] = useState(false);
 
+  // Ref to prevent duplicate executions
+  const isInitializingRef = useRef(false);
+  
+  // Ref to store fetchRelatedData function
+  const fetchRelatedDataRef = useRef<((unitId: string) => Promise<void>) | null>(null);
 
   const db = getFirestore();
 
@@ -172,22 +184,26 @@ export const useDeliveryman = () => {
 
   useEffect(() => {
     console.log('[useDeliveryman] useEffect triggered');
-    if (!user || !user.uid) { // Modificado para checar user e user.uid
+    if (!user || !user.uid) {
       console.log('[useDeliveryman] No user or no user UID, returning.');
-      setData(prev => ({ ...prev, loading: false, error: prev.error || 'Usuário não autenticado.' })); // Manter erro anterior se houver
+      setData(prev => ({ ...prev, loading: false, error: prev.error || 'Usuário não autenticado.' }));
       return;
     }
 
-    let deliverymanIdToUse: string | null = null; // Renomeado para clareza
+    // Prevent duplicate executions
+    if (isInitializingRef.current) {
+      console.log('[useDeliveryman] Already initializing, skipping duplicate execution.');
+      return;
+    }
+
+    let deliverymanIdToUse: string | null = null;
     let unsubscribeDeliveryman: (() => void) | null = null;
-    // Remove snapshot listeners for preparing orders
-    // let unsubscribePreparingOrigin: (() => void) | null = null;
-    // let unsubscribePreparingTransfer: (() => void) | null = null;
     let unsubscribeActive: (() => void) | null = null;
     let unsubscribeSpecific: (() => void) | null = null;
 
     const fetchDataAndSetupListeners = async () => {
       console.log('[useDeliveryman] fetchDataAndSetupListeners started');
+      isInitializingRef.current = true;
       setData(prev => ({ ...prev, loading: true, error: null }));
       try {
         // --- 1. Determine Deliveryman ID ---
@@ -231,13 +247,34 @@ export const useDeliveryman = () => {
             if (docSnapshot.exists()) {
               const deliverymanData = { id: docSnapshot.id, ...docSnapshot.data() } as Deliveryman;
               console.log('[useDeliveryman] Deliveryman snapshot received:', deliverymanData);
-              setData(prev => ({ ...prev, deliveryman: deliverymanData, loading: false }));
+              // Don't set loading to false yet - wait for secondary data
+              setData(prev => ({ ...prev, deliveryman: deliverymanData }));
 
-              if (deliverymanData.pharmacyUnitId) {
-                 fetchRelatedData(deliverymanData.pharmacyUnitId);
+              // Only load secondary data if deliveryman is working (not "Fora de expediente")
+              const isWorking = deliverymanData.status !== 'Fora de expediente';
+              
+              if (deliverymanData.pharmacyUnitId && isWorking) {
+                console.log('[useDeliveryman] Deliveryman is working, loading secondary data...');
+                fetchRelatedData(deliverymanData.pharmacyUnitId);
+                setupActiveAndSpecificOrderListeners(deliverymanData.pharmacyUnitId, deliverymanIdToUse!, deliverymanData.orderId);
+              } else if (!isWorking) {
+                console.log('[useDeliveryman] Deliveryman is off duty, skipping secondary data loading.');
+                console.log('[useDeliveryman] ✅ Setting loading to FALSE (off duty)');
+                // When off duty, set loading to false immediately since no secondary data needed
+                setData(prev => ({
+                  ...prev,
+                  motorcycles: [],
+                  pharmacyUnit: null,
+                  loading: false
+                }));
+                setActiveOrders([]);
+                setSpecificOrders([]);
+              } else {
+                // Setup listeners even if no unit (edge case)
+                console.log('[useDeliveryman] ✅ Setting loading to FALSE (no unit)');
+                setData(prev => ({ ...prev, loading: false }));
+                setupActiveAndSpecificOrderListeners(deliverymanData.pharmacyUnitId, deliverymanIdToUse!, deliverymanData.orderId);
               }
-              // Assegurar que deliverymanIdToUse não é nulo aqui
-              setupActiveAndSpecificOrderListeners(deliverymanData.pharmacyUnitId, deliverymanIdToUse!, deliverymanData.orderId);
 
             } else {
               console.error(`[useDeliveryman] Deliveryman document does not exist for ID: ${deliverymanIdToUse}!`);
@@ -258,6 +295,9 @@ export const useDeliveryman = () => {
 
     const fetchRelatedData = async (unitId: string) => {
        try {
+          console.log('[useDeliveryman] Starting secondary data loading...');
+          setIsLoadingSecondaryData(true);
+          
           // Fetch Motorcycles
           console.log(`[useDeliveryman] Fetching motorcycles for unit: ${unitId}`);
           const motorcyclesQuery = query(collection(db, 'motorcycles'), where('pharmacyUnitId', '==', unitId));
@@ -280,14 +320,24 @@ export const useDeliveryman = () => {
           setData(prev => ({
              ...prev,
              motorcycles: motorcyclesData,
-             pharmacyUnit: pharmacyUnitData
+             pharmacyUnit: pharmacyUnitData,
+             loading: false // Set loading to false only after secondary data is loaded
           }));
+
+          console.log('[useDeliveryman] Secondary data loading completed');
+          console.log('[useDeliveryman] ✅ Setting loading to FALSE (after secondary data)');
 
        } catch (error) {
           console.error('[useDeliveryman] Error fetching related data (motorcycles/unit):', error);
-          // Optionally set an error state specific to related data
+          // Set loading to false even on error
+          setData(prev => ({ ...prev, loading: false }));
+       } finally {
+          setIsLoadingSecondaryData(false);
        }
     };
+    
+    // Store reference for external access
+    fetchRelatedDataRef.current = fetchRelatedData;
 
 
     // Renamed and modified: only sets up listeners for active and specific orders
@@ -348,14 +398,12 @@ export const useDeliveryman = () => {
     // Cleanup function
     return () => {
       console.log('[useDeliveryman] Cleaning up listeners...');
+      isInitializingRef.current = false;
       if (unsubscribeDeliveryman) unsubscribeDeliveryman();
-      // No longer using snapshot listeners for preparing orders
-      // if (unsubscribePreparingOrigin) unsubscribePreparingOrigin();
-      // if (unsubscribePreparingTransfer) unsubscribePreparingTransfer();
       if (unsubscribeActive) unsubscribeActive();
       if (unsubscribeSpecific) unsubscribeSpecific();
     };
-  }, [user]); // Alterado para depender do objeto user inteiro
+  }, [user?.uid, user?.email]); // Dependências específicas para evitar re-renders desnecessários
 
   const fetchAvailablePreparingOrders = useCallback(async (options: { loadMore?: boolean; unitId: string }) => {
     if (loadingPreparingOrders) return;
@@ -458,11 +506,18 @@ export const useDeliveryman = () => {
 
     try {
       const deliverymanDocRef = doc(db, 'deliverymen', deliverymanId);
-      await updateDoc(deliverymanDocRef, {
-        originalUnit: currentDeliveryman.pharmacyUnitId, // Use current unit from state
+      
+      // Only set originalUnit if it's not already set (first time changing unit)
+      const updateData: any = {
         pharmacyUnitId: newUnitId
-      });
-      // No need to manually update state here, the listener will catch it
+      };
+      
+      if (!currentDeliveryman.originalUnit) {
+        updateData.originalUnit = currentDeliveryman.pharmacyUnitId;
+        console.log(`[useDeliveryman] Saving original unit: ${currentDeliveryman.pharmacyUnitId}`);
+      }
+      
+      await updateDoc(deliverymanDocRef, updateData);
       console.log(`[useDeliveryman] Updated unit for ${deliverymanId} to ${newUnitId}`);
     } catch (error) {
       console.error(`[useDeliveryman] Error updating unit for ${deliverymanId}:`, error);
@@ -490,6 +545,23 @@ export const useDeliveryman = () => {
       throw error;
     }
   };
+  
+  // Cancel unit selection (restore to original if changed but not confirmed)
+  const cancelUnitSelection = async () => {
+    const currentDeliveryman = data.deliveryman;
+    if (!currentDeliveryman) {
+       console.warn("Cannot cancel unit selection: Deliveryman data not loaded.");
+       return;
+    }
+    
+    // If there's an originalUnit set, it means unit was changed but work not started
+    // Restore to original
+    if (currentDeliveryman.originalUnit) {
+      console.log(`[useDeliveryman] Canceling unit selection, restoring to: ${currentDeliveryman.originalUnit}`);
+      await restoreOriginalUnit();
+    }
+  };
+  
   const updateDeliverymanStatus = async (status: string, orderIds: string[]) => {
     const currentDeliveryman = data.deliveryman;
     if (!currentDeliveryman) {
@@ -778,13 +850,132 @@ export const useDeliveryman = () => {
     }
   };
 
+  // Function to get motorcycle current km
+  const getMotorcycleKm = useCallback(async (motorcycleId: string): Promise<number | null> => {
+    try {
+      console.log('[useDeliveryman] Buscando kilometragem para moto:', motorcycleId);
+      const motorcycleRef = doc(db, 'motorcycles', motorcycleId);
+      const motorcycleDoc = await getDoc(motorcycleRef);
+      
+      if (motorcycleDoc.exists()) {
+        const motorcycleData = motorcycleDoc.data();
+        console.log('[useDeliveryman] Dados da moto encontrados:', motorcycleData);
+        const km = motorcycleData.km || 0;
+        console.log('[useDeliveryman] Kilometragem extraída:', km);
+        return km;
+      } else {
+        console.warn('[useDeliveryman] Documento da moto não encontrado:', motorcycleId);
+        return null;
+      }
+    } catch (error) {
+      console.error('[useDeliveryman] Erro ao buscar kilometragem da moto:', error);
+      throw error;
+    }
+  }, [db]);
+
+  // Function to get motorcycle next maintenance km
+  const getMotorcycleNextMaintenanceKm = useCallback(async (motorcycleId: string): Promise<number | null> => {
+    try {
+      const motorcycleRef = doc(db, 'motorcycles', motorcycleId);
+      const motorcycleDoc = await getDoc(motorcycleRef);
+      
+      if (motorcycleDoc.exists()) {
+        const motorcycleData = motorcycleDoc.data();
+        const nextMaintenanceKm = motorcycleData.nextMaintenanceKm || null;
+        return nextMaintenanceKm;
+      } else {
+        return null;
+      }
+    } catch (error) {
+      console.error('[useDeliveryman] Erro ao buscar próxima manutenção da moto:', error);
+      throw error;
+    }
+  }, [db]);
+
+  // Function to update motorcycle km and next maintenance km
+  const updateMotorcycleData = useCallback(async (motorcycleId: string, newKm: number, nextMaintenanceKm?: number): Promise<void> => {
+    try {
+      const motorcycleRef = doc(db, 'motorcycles', motorcycleId);
+      const updateData: any = {
+        km: newKm,
+        updatedAt: Timestamp.now()
+      };
+      
+      if (nextMaintenanceKm !== undefined) {
+        updateData.nextMaintenanceKm = nextMaintenanceKm;
+      }
+      
+      await updateDoc(motorcycleRef, updateData);
+      console.log('[useDeliveryman] Dados da moto atualizados com sucesso');
+    } catch (error) {
+      console.error('[useDeliveryman] Erro ao atualizar dados da moto:', error);
+      throw error;
+    }
+  }, [db]);
+
+  // Function to update motorcycle km (backward compatibility)
+  const updateMotorcycleKm = useCallback(async (motorcycleId: string, newKm: number): Promise<void> => {
+    return updateMotorcycleData(motorcycleId, newKm);
+  }, [updateMotorcycleData]);
+
+  // Function to save inspection form to Firestore
+  const saveInspectionForm = useCallback(async (formData: InspectionFormData): Promise<string> => {
+    try {
+      const formsCollection = collection(db, 'forms');
+      const docRef = await addDoc(formsCollection, {
+        ...formData,
+        createdAt: Timestamp.fromDate(formData.createdAt),
+        updatedAt: Timestamp.fromDate(formData.updatedAt)
+      });
+      console.log('[useDeliveryman] Formulário de inspeção salvo com sucesso');
+      return docRef.id; // Return the document ID
+    } catch (error) {
+      console.error('[useDeliveryman] Erro ao salvar formulário de inspeção:', error);
+      throw error;
+    }
+  }, [db]);
+
+  // Function to update inspection form with final time
+  const updateInspectionFormFinalTime = useCallback(async (formId: string, finalTime: string): Promise<void> => {
+    try {
+      const formDoc = doc(db, 'forms', formId);
+      await updateDoc(formDoc, {
+        finalTime,
+        updatedAt: Timestamp.now()
+      });
+      console.log('[useDeliveryman] Hora final do formulário atualizada com sucesso');
+    } catch (error) {
+      console.error('[useDeliveryman] Erro ao atualizar hora final do formulário:', error);
+      throw error;
+    }
+  }, [db]);
+
+
+  // Public function to load secondary data on demand
+  const loadSecondaryData = useCallback(async (unitId?: string) => {
+    const unitToLoad = unitId || data.deliveryman?.pharmacyUnitId;
+    if (!unitToLoad) {
+      console.warn('[useDeliveryman] Cannot load secondary data: no unit ID provided');
+      return;
+    }
+    
+    if (fetchRelatedDataRef.current) {
+      console.log('[useDeliveryman] Manually loading secondary data for unit:', unitToLoad);
+      await fetchRelatedDataRef.current(unitToLoad);
+    } else {
+      console.warn('[useDeliveryman] fetchRelatedData not available yet');
+    }
+  }, [data.deliveryman?.pharmacyUnitId]);
+
 
   return {
     ...data, // Spread the state data (deliveryman, motorcycles, orders, pharmacyUnit, loading, error)
     fetchAvailablePreparingOrders, // Expose the new function
     loadingPreparingOrders, // Expose loading state for preparing orders
+    isLoadingSecondaryData, // Expose secondary loading state
     hasMoreOriginOrders, // Expose to know if more can be loaded
     hasMoreTransferOrders, // Expose to know if more can be loaded
+    loadSecondaryData, // Expose manual loading function
     updateDeliverymanStatus,
     updateOrderStatus,
     updateDeliverymanLicensePlate,
@@ -792,8 +983,15 @@ export const useDeliveryman = () => {
     setDeliverymanOrders,
     updateMultipleOrderStatus,
     updateDeliverymanUnit,
+    cancelUnitSelection,
     // restoreOriginalUnit is implicitly handled by updateDeliverymanStatus('Fora de expediente')
     createOrUpdatePonto,
-    getPontoData
+    getPontoData,
+    getMotorcycleKm,
+    getMotorcycleNextMaintenanceKm,
+    updateMotorcycleKm,
+    updateMotorcycleData,
+    saveInspectionForm,
+    updateInspectionFormFinalTime
   };
 };

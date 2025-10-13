@@ -5,8 +5,24 @@ import {
   query, // Renomeado de firebaseQuery para query
   where,
   getDocs,
-  DocumentData
+  DocumentData,
+  orderBy,
+  limit
 } from 'firebase/firestore';
+
+// Time period enum
+export enum TimePeriod {
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly'
+}
+
+// Helper to get start of current day
+const getStartOfDay = () => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now;
+};
 
 // Helper to get start of current week (Sunday)
 const getStartOfWeek = () => {
@@ -14,8 +30,52 @@ const getStartOfWeek = () => {
   const dayOfWeek = now.getDay(); // 0 (Sunday) to 6
   const diff = now.getDate() - dayOfWeek;
   const start = new Date(now.setDate(diff));
-  start.setHours(0,0,0,0);
+  start.setHours(0, 0, 0, 0);
   return start;
+};
+
+// Helper to get start of current month
+const getStartOfMonth = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  start.setHours(0, 0, 0, 0);
+  return start;
+};
+
+// Helper to get start date based on period
+const getStartDateForPeriod = (period: TimePeriod) => {
+  switch (period) {
+    case TimePeriod.DAILY:
+      return getStartOfDay();
+    case TimePeriod.WEEKLY:
+      return getStartOfWeek();
+    case TimePeriod.MONTHLY:
+      return getStartOfMonth();
+    default:
+      return getStartOfDay();
+  }
+};
+
+// Helper to get period label
+const getPeriodLabel = (period: TimePeriod) => {
+  switch (period) {
+    case TimePeriod.DAILY:
+      return 'diárias';
+    case TimePeriod.WEEKLY:
+      return 'semanais';
+    case TimePeriod.MONTHLY:
+      return 'mensais';
+    default:
+      return 'diárias';
+  }
+};
+
+// Helper to get last 3 days for search (dummy orders)
+const getLastThreeDays = () => {
+  const now = new Date();
+  const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+  threeDaysAgo.setHours(0, 0, 0, 0);
+  return threeDaysAgo;
 };
 
 interface AdminData {
@@ -27,7 +87,11 @@ interface AdminData {
   error: string | null;
 }
 
-export const useAdminData = (userRole: string | null, managerUnit: string | null) => {
+export const useAdminData = (
+  userRole: string | null, 
+  managerUnit: string | null,
+  timePeriod: TimePeriod = TimePeriod.DAILY
+) => {
   const [internalData, setInternalData] = useState<AdminData>({
     deliverymen: [],
     pharmacyUnits: [],
@@ -36,173 +100,175 @@ export const useAdminData = (userRole: string | null, managerUnit: string | null
     loading: true,
     error: null
   });
-  // console.log(`[useAdminData] Hook initialized. Role: ${userRole}, Unit: ${managerUnit}, Loading: ${internalData.loading}`);
 
   const db = getFirestore();
-
   useEffect(() => {
-    // console.log(`[useAdminData] useEffect triggered. Role: ${userRole}, Unit: ${managerUnit}, CurrentLoading: ${internalData.loading}`);
-    
     const fetchData = async () => {
-      // console.log("[useAdminData] fetchData START");
-      const startTime = Date.now();
+      const totalStartTime = Date.now();
       
       setInternalData(prev => ({ 
         ...prev, 
         loading: true, 
         error: null,
       }));
-      // console.log("[useAdminData] State reset for primary data loading (loading: true, error: null).");
 
       try {
+        const setupStartTime = Date.now();
+        
         const deliverymenRef = collection(db, 'deliverymen');
         const pharmacyUnitsRef = collection(db, 'pharmacyUnits');
         const deliveredOrdersRef = collection(db, 'orders');
-        // console.log("[useAdminData] Base collection refs created.");
         
         // Construir as queries com filtros
-        let deliverymenQuery = query(deliverymenRef); // Corrigido: firebaseQuery -> query
-        let pharmacyUnitsQuery = query(pharmacyUnitsRef); // Corrigido: firebaseQuery -> query
+        let deliverymenQuery = query(deliverymenRef);
+        let pharmacyUnitsQuery = query(pharmacyUnitsRef);
         let deliveredOrdersQuery = query(deliveredOrdersRef, where('status', '==', 'Entregue'));
         
-        const startOfWeek = getStartOfWeek();
+        const startDate = getStartDateForPeriod(timePeriod);
+        const periodLabel = getPeriodLabel(timePeriod);
+        
+        const queryConfigStartTime = Date.now();
 
         if (userRole === 'manager' && managerUnit) {
-          // console.log(`[useAdminData] Applying manager filters. Unit: ${managerUnit}`);
-          deliverymenQuery = query(deliverymenRef, where('pharmacyUnitId', '==', managerUnit)); // Corrigido: firebaseQuery -> query
-          pharmacyUnitsQuery = query(pharmacyUnitsRef, where('__name__', '==', managerUnit)); // Corrigido: firebaseQuery -> query
-          deliveredOrdersQuery = query( // Corrigido: firebaseQuery -> query
-            deliveredOrdersRef,
-            where('status', '==', 'Entregue'),
-            where('pharmacyUnitId', '==', managerUnit)
-          );
-          // console.log("[useAdminData] Manager queries updated.");
-        } else if (userRole === 'admin') {
-          // console.log("[useAdminData] Admin role, fetching all relevant data.");
-          // As queries iniciais já buscam todos os dados para admin (exceto filtro de status em orders)
-          // fetch only this week's orders and filter delivered in memory
+          deliverymenQuery = query(deliverymenRef, where('pharmacyUnitId', '==', managerUnit));
+          pharmacyUnitsQuery = query(pharmacyUnitsRef, where('__name__', '==', managerUnit));
           deliveredOrdersQuery = query(
             deliveredOrdersRef,
-            where('createdAt', '>=', startOfWeek)
+            where('status', '==', 'Entregue'),
+            where('pharmacyUnitId', '==', managerUnit),
+            where('createdAt', '>=', startDate)
           );
-        } else {
-          // console.log(`[useAdminData] Role is not manager or admin (${userRole}), or managerUnit is missing. Fetching general data or no data based on role logic.`);
-          // Para outros papéis ou gerente sem unidade, as queries padrão são usadas.
-          // Se for necessário um comportamento diferente, adicionar lógica aqui.
+        } else if (userRole === 'admin') {
+          // Try alternative approach: query by date range with status filter
+          deliveredOrdersQuery = query(
+            deliveredOrdersRef,
+            where('createdAt', '>=', startDate),
+            where('status', '==', 'Entregue')
+          );        
         }
-
+        
+        const mainQueriesStartTime = Date.now();
+        
         // Executar queries primárias em paralelo
-        // console.log("[useAdminData] Fetching primary data (deliverymen, units, deliveredOrders) START");
-        const primaryDataFetchStartTime = Date.now();
+        
+        const deliverymenStart = Date.now();
+        const pharmacyUnitsStart = Date.now();
+        const deliveredOrdersStart = Date.now();
+        
+        // Test simple connectivity first
+        const connectivityTest = Date.now();
+        const testQuery = query(collection(db, 'orders'), limit(1));
+        await getDocs(testQuery);
+        
+        // Alternative: Load most critical data first, then the rest
+        // This gives users something to see faster
+        
+        const criticalStart = Date.now();
+        const deliveredOrdersSnapshot = await getDocs(deliveredOrdersQuery);
+        
+        // Update state with partial data to show something to user
+        const partialDeliveredOrdersData = deliveredOrdersSnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+        
+        setInternalData(prev => ({
+          ...prev,
+          deliveredOrders: partialDeliveredOrdersData,
+          loading: true // Still loading other data
+        }));
+        
+        const remainingStart = Date.now();
+        
         const [
           deliverymenSnapshot,
           pharmacyUnitsSnapshot,
-          deliveredOrdersSnapshot,
         ] = await Promise.all([
-          getDocs(deliverymenQuery),
-          getDocs(pharmacyUnitsQuery),
-          getDocs(deliveredOrdersQuery),
+          getDocs(deliverymenQuery).then(result => {
+            return result;
+          }),
+          getDocs(pharmacyUnitsQuery).then(result => {
+            return result;
+          }),
         ]);
-        // console.log(`[useAdminData] Fetching primary data END. Duration: ${Date.now() - primaryDataFetchStartTime}ms`);
-        // console.log(`[useAdminData]   - Deliverymen: ${deliverymenSnapshot.size} docs`);
-        // console.log(`[useAdminData]   - PharmacyUnits: ${pharmacyUnitsSnapshot.size} docs`);
-        // console.log(`[useAdminData]   - DeliveredOrders: ${deliveredOrdersSnapshot.size} docs`);
 
-        // Atualizar estado com dados primários e definir loading como false
-        setInternalData(prev => {
-          const allOrders = deliveredOrdersSnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
-          // filter only delivered status
-          const deliveredThisWeek = allOrders.filter(order => order.status === 'Entregue');
-          return {
-            ...prev,
-            deliverymen: deliverymenSnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })),
-            pharmacyUnits: pharmacyUnitsSnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })),
-            deliveredOrders: deliveredThisWeek,
-            loading: false, // Primary data loading finished
-            error: null
-          };
-        });
-        // console.log("[useAdminData] Primary data set to state, loading set to false.");
 
-        // Buscar dummyOrders (todos os pedidos para a unidade do gerente ou todos para admin) em segundo plano
-        // console.log("[useAdminData] Fetching dummyOrders (for search) START");
-        const dummyOrdersFetchStartTime = Date.now();
+        const dummyStartTime = Date.now();
+        // Buscar dummyOrders em paralelo (otimizado para busca)
+        let dummyOrdersData: any[] = [];
         try {
           const dummyOrdersRefCollection = collection(db, 'orders');
           let dummyOrdersQueryFiltered: any;
           
           if (userRole === 'manager' && managerUnit) {
-            // console.log(`[useAdminData] Applying manager filter for dummyOrders. Unit: ${managerUnit}`);
-            dummyOrdersQueryFiltered = query(dummyOrdersRefCollection, where('pharmacyUnitId', '==', managerUnit)); // Corrigido: firebaseQuery -> query
+            // Para manager: últimos 500 pedidos da unidade (para busca)
+            // Não filtra por data para permitir busca em pedidos mais antigos
+            dummyOrdersQueryFiltered = query(
+              dummyOrdersRefCollection, 
+              where('pharmacyUnitId', '==', managerUnit),
+              orderBy('createdAt', 'desc'),
+              limit(1)
+            );
           } else if (userRole === 'admin') {
-            // console.log("[useAdminData] Admin role, fetching all dummyOrders.");
-            // only this week's orders for search
+            // Para admin: últimos 3 dias com limite de 1000 pedidos
+            const lastThreeDays = getLastThreeDays();
             dummyOrdersQueryFiltered = query(
               dummyOrdersRefCollection,
-              where('createdAt', '>=', startOfWeek)
+              where('createdAt', '>=', lastThreeDays),
+              orderBy('createdAt', 'desc'),
+              limit(1)
             );
           }
           
           if (dummyOrdersQueryFiltered) {
+            const dummyQueryStartTime = Date.now();
             const dummySnapshot = await getDocs(dummyOrdersQueryFiltered);
-            setInternalData(prev => ({
-              ...prev,
-              dummyOrders: dummySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }))
-            }));
-            // console.log("[useAdminData] dummyOrders set to state.");
-          } else {
-            // console.log("[useAdminData] dummyOrders query was not constructed, skipping fetch.");
+            
+            const dummyProcessingStartTime = Date.now();
+            dummyOrdersData = dummySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
           }
         } catch (dummyError) {
-          // console.error('[useAdminData] Erro ao buscar dummyOrders:', dummyError);
-          setInternalData(prev => ({ ...prev, error: prev.error || 'Erro ao carregar dados de busca' }));
-          // console.log(`[useAdminData] Fetching dummyOrders END (ERROR). Duration: ${Date.now() - dummyOrdersFetchStartTime}ms`);
+          console.error('❌ [PERF][useAdminData] Error fetching dummyOrders:', dummyError);
         }
 
+
+        // Atualizar estado com todos os dados de uma vez
+        const finalProcessingStartTime = Date.now();
+        
+        const allOrders = deliveredOrdersSnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+        // Não precisa filtrar novamente por status, pois a query já fez isso
+        
+        const deliverymenData = deliverymenSnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+        const pharmacyUnitsData = pharmacyUnitsSnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+        
+        
+        const stateUpdateStartTime = Date.now();
+        
+        setInternalData({
+          deliverymen: deliverymenData,
+          pharmacyUnits: pharmacyUnitsData,
+          deliveredOrders: allOrders, // Já filtrado pela query
+          dummyOrders: dummyOrdersData,
+          loading: false,
+          error: null
+        });
+        
+
       } catch (error) {
-        // console.error('[useAdminData] Erro ao buscar dados primários:', error);
+        console.error('❌ [PERF][useAdminData] Error during data fetch:', error);
+        const errorTime = Date.now() - totalStartTime;
         setInternalData(prev => ({
           ...prev,
           loading: false,
-          error: 'Erro ao carregar dados principais'
+          error: 'Erro ao carregar dados'
         }));
       }
-      // console.log(`[useAdminData] fetchData END. Total Duration: ${Date.now() - startTime}ms`);
     };
 
-    // Condições para buscar dados:
-    // 1. Se for admin, busca sempre.
-    // 2. Se for manager, busca apenas se managerUnit estiver definido.
-    if (userRole === 'admin') {
-      // console.log(`[useAdminData] Admin role detected. Calling fetchData. Unit: ${managerUnit}`);
+    // Condições simplificadas para buscar dados
+    if (userRole === 'admin' || (userRole === 'manager' && managerUnit)) {
       fetchData();
-    } else if (userRole === 'manager') {
-      if (managerUnit) {
-        // console.log(`[useAdminData] Manager role with unit (${managerUnit}) detected. Calling fetchData.`);
-        fetchData();
-      } else {
-        // console.log("[useAdminData] Manager role detected, but managerUnit is not yet available. Waiting for unit. Setting loading to true and clearing data.");
-        setInternalData({
-          deliverymen: [],
-          pharmacyUnits: [],
-          deliveredOrders: [],
-          dummyOrders: [],
-          loading: true,
-          error: null
-        });
-      }
-    } else {
-      // console.log(`[useAdminData] No suitable role ('${userRole}') or role not yet defined. Clearing data and setting loading to false.`);
-      setInternalData({
-        deliverymen: [],
-        pharmacyUnits: [],
-        deliveredOrders: [],
-        dummyOrders: [],
-        loading: false,
-        error: null
-      });
-    }
-  }, [userRole, managerUnit]); // db is stable, fetchData should be wrapped in useCallback if added as dependency, or its own deps listed if complex.
+    } else if (userRole && userRole !== 'admin' && userRole !== 'manager') {
+      // Para outros roles, define loading como false
+      setInternalData(prev => ({ ...prev, loading: false }));
+    }  }, [userRole, managerUnit, timePeriod]);
 
   // Memoize the returned data slices to stabilize references
   const deliverymen = useMemo(() => internalData.deliverymen, [internalData.deliverymen]);

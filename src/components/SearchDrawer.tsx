@@ -17,7 +17,8 @@ import {
   Search, 
   CheckCircle,
   Users,
-  KeySquare
+  KeySquare,
+  ClipboardList
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { collection, query as firebaseQuery, where, getDocs } from 'firebase/firestore';
@@ -32,7 +33,7 @@ interface SearchDrawerProps {
   onClose: () => void;
   onAnimationEnd?: () => void;
   onSearch: (type: SearchType, mode: SelectionMode, query: string) => any[];
-  onSelect: (selected: string | string[], type: SearchType) => void;
+  onSelect: (selected: string | string[] | any, type: SearchType) => void;
   userRole?: string;
   userUnitId?: string;
 }
@@ -106,12 +107,8 @@ const SearchDrawer: React.FC<SearchDrawerProps> = ({
       onClose();
       setIsClosing(false);
       setError(null);
-      
-      // Chama onAnimationEnd com um pequeno atraso para garantir que 
-      // a animação de fechamento já tenha terminado completamente
-      setTimeout(() => {
-        onAnimationEnd?.();
-      }, 100);
+        // Chama onAnimationEnd imediatamente após o fechamento
+      onAnimationEnd?.();
     });
   };
 
@@ -158,12 +155,16 @@ const SearchDrawer: React.FC<SearchDrawerProps> = ({
 
   const searchOrders = async (searchQuery: string) => {
     setLoading(true);
+    console.log('[SearchDrawer] searchOrders called with query:', searchQuery);
+    console.log('[SearchDrawer] userRole:', userRole, 'userUnitId:', userUnitId);
+    
     try {
       const ordersRef = collection(db, 'orders');
       let queryRef;
   
       // Se for gerente, adiciona filtro da unidade junto com a busca
       if (userRole === 'manager') {
+        console.log('[SearchDrawer] Manager mode, filtering by unit');
         // Sempre busca primeiro pelo orderId, independente se tem letras ou números
         queryRef = firebaseQuery(
           ordersRef, 
@@ -173,23 +174,29 @@ const SearchDrawer: React.FC<SearchDrawerProps> = ({
       } 
       // Se não for gerente, faz a busca normal
       else {
+        console.log('[SearchDrawer] Admin mode, no unit filter');
         // Sempre busca primeiro pelo orderId, independente se tem letras ou números
         queryRef = firebaseQuery(ordersRef, where('orderId', '==', searchQuery));
       }
   
       const snapshot = await getDocs(queryRef);
+      console.log('[SearchDrawer] Query returned', snapshot.docs.length, 'results');
       
-      const orders = snapshot.docs.map(doc => ({
-        id: doc.id,
-        orderId: doc.data().orderId,
-        status: doc.data().status,
-        type: 'result',
-        ...doc.data()
-      }));
+      const orders = snapshot.docs.map(doc => {
+        console.log('[SearchDrawer] Order found:', doc.id, doc.data().orderId);
+        return {
+          id: doc.id,
+          orderId: doc.data().orderId,
+          status: doc.data().status,
+          type: 'result',
+          ...doc.data()
+        };
+      });
   
+      console.log('[SearchDrawer] Setting search results:', orders.length, 'orders');
       setSearchResults(orders || []);
     } catch (error) {
-      console.error('Erro ao buscar pedidos:', error);
+      console.error('[SearchDrawer] Error searching orders:', error);
       setSearchResults([]);
     } finally {
       setLoading(false);
@@ -232,13 +239,50 @@ const SearchDrawer: React.FC<SearchDrawerProps> = ({
 
 
   const handleSelect = (id: string) => {
+    console.log('[SearchDrawer] handleSelect called', { id, searchType, selectionMode });
+    
     if (searchType === 'order' || selectionMode === 'single') {
-      // Primeiro definimos o item selecionado para a camada superior
-      onSelect(id, searchType);
-      
-      // Depois fechamos o drawer
-      handleClose();
+      // Para pedidos, chama onSelect e fecha o drawer de forma sincronizada
+      if (searchType === 'order') {
+        console.log('[SearchDrawer] Order selected, starting close animation');
+        
+        // Encontra o pedido completo nos resultados da busca
+        const fullOrder = searchResults.find(result => result.id === id);
+        console.log('[SearchDrawer] Full order data:', fullOrder);
+        
+        // Fecha o drawer primeiro, mas chama onSelect APÓS a animação de fechamento
+        setIsClosing(true);
+        Animated.parallel([
+          Animated.timing(translateX, {
+            toValue: DRAWER_WIDTH,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          console.log('[SearchDrawer] Close animation finished, calling onSelect');
+          // Passa o pedido completo em vez de apenas o ID
+          onSelect(fullOrder || id, searchType);
+          console.log('[SearchDrawer] onSelect called, calling onClose');
+          onClose();
+          setIsClosing(false);
+          setError(null);
+          // Chama onAnimationEnd após tudo
+          console.log('[SearchDrawer] Calling onAnimationEnd');
+          onAnimationEnd?.();
+        });
+      } else {
+        console.log('[SearchDrawer] Non-order selection, using standard flow');
+        // Para outros tipos, mantém o comportamento original
+        onSelect(id, searchType);
+        handleClose();
+      }
     } else {
+      console.log('[SearchDrawer] Multiple selection mode');
       const updatedSelection = selectedItems.includes(id)
         ? selectedItems.filter(item => item !== id)
         : [...selectedItems, id];
@@ -303,6 +347,16 @@ const SearchDrawer: React.FC<SearchDrawerProps> = ({
             <KeySquare size={24} color="#FF4B2B" />
             <Text style={styles.buttonText}>
               Veículos
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => handleNavigation('Forms')}
+          >
+            <ClipboardList size={24} color="#FF4B2B" />
+            <Text style={styles.buttonText}>
+              Formulários
             </Text>
           </TouchableOpacity>
         </>

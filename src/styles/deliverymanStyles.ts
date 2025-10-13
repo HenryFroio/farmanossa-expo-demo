@@ -1,5 +1,20 @@
 // styles/deliverymanStyles.ts
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, Platform, Dimensions } from 'react-native';
+
+const { width, height } = Dimensions.get('window');
+
+// Função para calcular tamanho de fonte responsivo
+const responsiveFontSize = (baseSize: number) => {
+  const scale = width / 375; // 375 é a largura base (iPhone SE/6/7/8)
+  const newSize = baseSize * scale;
+  return Math.round(newSize);
+};
+
+// Função para calcular tamanho de ícone/logo responsivo
+const responsiveSize = (baseSize: number) => {
+  const scale = Math.min(width / 375, 1.3); // Limita o scale máximo a 1.3
+  return Math.round(baseSize * scale);
+};
 
 const colors = {
   primary: '#e41c26',
@@ -43,7 +58,7 @@ export default StyleSheet.create({
     backgroundColor: colors.primary,
     paddingTop: 10,
     paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     // Sombra apenas nas laterais e inferior
@@ -58,14 +73,16 @@ export default StyleSheet.create({
     elevation: 6,
     // Clip a sombra superior
     overflow: 'hidden',
-    zIndex: 10,  },
+    zIndex: 10,
+    minHeight: responsiveSize(80),
+  },
   headerLeft: {
-    left: 20,
+    width: responsiveSize(60),
     justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 1,
   },
   headerIcon: {
-    right: 20,
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     padding: 8,
@@ -75,19 +92,22 @@ export default StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: responsiveSize(100),
+    justifyContent: 'flex-end',
   },
   
   headerIconMargin: {
-    marginRight: 16,
+    marginRight: 12,
   },
   greeting: {
-    fontSize: 28,
+    fontSize: responsiveFontSize(20),
     fontWeight: 'bold',
     color: colors.white,
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+    flexShrink: 1,
   },
   content: {
     flex: 1,

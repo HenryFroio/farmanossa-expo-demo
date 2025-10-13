@@ -998,9 +998,10 @@ exports.generateMonthlyReport = functions
             pass: 'farmanossa2024!'
           }
         });
-          const errorMailOptions = {
-          from: 'demo-app@example.com',
-          to: ['admin@demo-company.com', 'manager@demo-company.com'],
+        
+        const errorMailOptions = {
+          from: 'farmanossaapp@gmail.com',
+          to: ['humberto.farmanossa@gmail.com', 'macielssdf@hotmail.com'],
           subject: `ERRO - Relatório Mensal de Pedidos`,
           text: `Ocorreu um erro ao gerar o relatório mensal:\n\n${error.message}\n\nPor favor, verifique os logs do sistema.`
         };

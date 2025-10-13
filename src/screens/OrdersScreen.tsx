@@ -38,6 +38,7 @@ const OrdersScreen: React.FC = () => {
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null); // Added selectedOrder state
   const bottomSheetRef = useRef<BottomSheet>(null); // Added bottomSheetRef
+  const [userRole, setUserRole] = useState('admin'); // Added userRole state
 
   const fetchOrders = useCallback(async (date: Date) => {
     setIsLoading(true);
@@ -201,9 +202,7 @@ const OrdersScreen: React.FC = () => {
           order={selectedOrder}
           bottomSheetRef={bottomSheetRef}
           onClose={handleCloseBottomSheet}
-          // userRole prop is optional in OrderDetailsBottomSheet, 
-          // if specific role-based actions are needed here, 
-          // you might need to fetch or pass userRole to OrdersScreen
+          userRole={userRole}
         />
       )}
     </GestureHandlerRootView>

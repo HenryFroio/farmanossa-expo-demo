@@ -29,6 +29,16 @@ interface Employee {
 
 const EMPLOYEE_ROLES = ['admin', 'deliv', 'manager', 'attendant'];
 
+const getRoleInPortuguese = (role: string): string => {
+  const roles = {
+    deliv: 'Entregador',
+    attendant: 'Balconista',
+    manager: 'Gerente',
+    admin: 'Administrador'
+  };
+  return roles[role as keyof typeof roles] || role;
+};
+
 // Função para gerar o próximo ID de entregador disponível
 const generateNextDeliverymanId = async () => {
   try {
@@ -90,6 +100,111 @@ export const useEmployees = () => {
   const [error, setError] = useState<string | null>(null);
   const [units, setUnits] = useState<Array<{ id: string, name: string }>>([]);
   const [lastSearch, setLastSearch] = useState('');
+
+  const checkEmailExists = async (email: string) => {
+    try {
+      const existingUserQuery = query(
+        collection(db, 'users'),
+        where('email', '==', email)
+      );
+      const existingUserSnapshot = await getDocs(existingUserQuery);
+      
+      if (!existingUserSnapshot.empty) {
+        const existingUser = existingUserSnapshot.docs[0];
+        const userData = existingUser.data();
+        
+        // Se já é um funcionário, retornar erro
+        if (EMPLOYEE_ROLES.includes(userData.role)) {
+          return {
+            exists: true,
+            isEmployee: true,
+            role: userData.role,
+            message: `Este email já está cadastrado como ${getRoleInPortuguese(userData.role)}`
+          };
+        }
+        
+        // Se é cliente, retornar informação para conversão
+        if (userData.role === 'cliente') {
+          return {
+            exists: true,
+            isClient: true,
+            userData: userData,
+            userId: existingUser.id,
+            message: `Este email pertence a um cliente. Deseja converter automaticamente para funcionário?`
+          };
+        }
+      }
+      
+      return { exists: false };
+    } catch (error) {
+      console.error('Erro ao verificar email:', error);
+      return { exists: false, error: 'Erro ao verificar email' };
+    }
+  };
+
+  const convertClientToEmployee = async (employeeData: any, existingUserData: any, existingUserId: string) => {
+    try {
+      let employeeId = '';
+      
+      // Gerar ID de entregador se necessário
+      if (employeeData.role === 'deliv') {
+        employeeId = await generateNextDeliverymanId();
+        console.log('ID de entregador gerado para conversão:', employeeId);
+      }
+      
+      // Atualizar o documento existente (mantém a senha original)
+      const userDocRef = doc(db, 'users', existingUserId);
+      const updatedUserData = {
+        displayName: employeeData.displayName,
+        role: employeeData.role,
+        unit: employeeData.unit,
+        // NÃO atualizar a senha - manter a original do cliente
+        updatedAt: new Date(),
+        status: 'active',
+        ...(employeeData.role === 'deliv' && { id: employeeId })
+      };
+      
+      await updateDoc(userDocRef, updatedUserData);
+      
+      // Se for entregador, criar documento na coleção deliverymen
+      if (employeeData.role === 'deliv') {
+        const deliverymanDoc = {
+          id: employeeId,
+          name: employeeData.displayName,
+          chavePix: employeeData.chavePix,
+          pharmacyUnitId: employeeData.unit,
+          status: 'Fora de expediente',
+          orderId: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          licensePlate: null,
+          originalUnit: null,
+          email: employeeData.email,
+          phone: existingUserData.phone || existingUserData.phoneNumber || '',
+          phoneVerified: existingUserData.phoneVerified || false
+        };
+        
+        await setDoc(doc(db, 'deliverymen', employeeId), deliverymanDoc);
+      }
+      
+      // Atualizar lista de funcionários
+      if (employees.length > 0) {
+        await fetchEmployees(lastSearch);
+      }
+      
+      return { 
+        success: true, 
+        converted: true,
+        message: `Perfil de cliente convertido com sucesso para ${getRoleInPortuguese(employeeData.role)}. A senha original do cliente foi mantida.`
+      };
+    } catch (error: any) {
+      console.error('Erro ao converter cliente para funcionário:', error);
+      return { 
+        success: false, 
+        error: error?.message || 'Erro ao converter cliente para funcionário' 
+      };
+    }
+  };
   const fetchEmployees = async (search = '', unitId?: string) => {
     setLastSearch(search);
     setLoading(true);
@@ -171,7 +286,29 @@ export const useEmployees = () => {
       if (!auth.currentUser?.uid) {
         console.error('Admin não autenticado');
         throw new Error('Admin não autenticado');
-      }      if (employeeData.role === 'deliv') {
+      }
+
+      // Verificar se o email já existe como cliente
+      const emailCheck = await checkEmailExists(employeeData.email);
+      
+      if (emailCheck.exists) {
+        if (emailCheck.isEmployee) {
+          throw new Error(emailCheck.message);
+        }
+        
+        // Se é cliente, será tratado na tela com popup de confirmação
+        if (emailCheck.isClient) {
+          return {
+            success: false,
+            needsConfirmation: true,
+            clientData: emailCheck.userData,
+            userId: emailCheck.userId,
+            message: emailCheck.message
+          };
+        }
+      }
+
+      if (employeeData.role === 'deliv') {
         employeeId = await generateNextDeliverymanId();
         console.log('ID de entregador gerado:', employeeId);
       }
@@ -290,6 +427,28 @@ export const useEmployees = () => {
           deletedAt: new Date(),
           deletedBy: auth.currentUser?.uid
         });
+
+        // Remover do BigQuery analytics
+        try {
+          const bigqueryResponse = await fetch(
+            `https://us-central1-farmanossadelivery-76182.cloudfunctions.net/bigqueryApi/deliveryman/${employee.id}`,
+            {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            }
+          );
+          
+          if (!bigqueryResponse.ok) {
+            console.warn(`⚠️ Failed to delete deliveryman ${employee.id} from BigQuery analytics`);
+          } else {
+            console.log(`✅ Deleted deliveryman ${employee.id} from BigQuery analytics`);
+          }
+        } catch (bigqueryError) {
+          // Não bloquear a operação se a deleção do BigQuery falhar
+          console.warn('BigQuery deletion failed, continuing with Firestore deletion:', bigqueryError);
+        }
       }
     }
 
@@ -512,6 +671,8 @@ export const useEmployees = () => {
     fetchUnits,
     createEmployee,
     updateEmployee,
-    deleteEmployee
+    deleteEmployee,
+    checkEmailExists,
+    convertClientToEmployee
   };
 };

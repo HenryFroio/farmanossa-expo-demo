@@ -44,7 +44,9 @@ const EmployeesScreen = () => {
     fetchEmployees,
     createEmployee,
     updateEmployee,
-    deleteEmployee
+    deleteEmployee,
+    checkEmailExists,
+    convertClientToEmployee
   } = useEmployees();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,8 +80,60 @@ const EmployeesScreen = () => {
 
   const handleCreateEmployee = async (employeeData: any) => {
     setIsCreating(true);
+    
+    // Primeiro verificar se precisa de confirmação para conversão
     const result = await createEmployee(employeeData);
+    
+    if (result.needsConfirmation && result.clientData) {
+      setIsCreating(false);
+      
+      // Mostrar popup de confirmação
+      Alert.alert(
+        'Cliente Encontrado',
+        `Este email pertence a um cliente existente. Deseja converter automaticamente para ${getRoleInPortuguese(employeeData.role)}?\n\nA senha original do cliente será mantida.`,
+        [
+          {
+            text: 'Cancelar',
+            style: 'cancel',
+            onPress: () => {
+              // Não fazer nada, apenas fechar o alert
+            }
+          },
+          {
+            text: 'Converter',
+            onPress: async () => {
+              setIsCreating(true);
+              
+              // Executar a conversão
+              const conversionResult = await convertClientToEmployee(
+                employeeData, 
+                result.clientData, 
+                result.userId
+              );
+              
+              setIsCreating(false);
+              
+              if (conversionResult.success) {
+                setCreateModalVisible(false);
+                Alert.alert('Conversão Realizada', conversionResult.message || 'Perfil convertido com sucesso!');
+                // Atualizar lista de funcionários
+                if (userRole === 'manager' && managerUnit) {
+                  fetchEmployees('', managerUnit);
+                } else {
+                  fetchEmployees();
+                }
+              } else {
+                Alert.alert('Erro', conversionResult.error || 'Erro ao converter perfil');
+              }
+            }
+          }
+        ]
+      );
+      return;
+    }
+    
     setIsCreating(false);
+    
     if (result.success) {
       setCreateModalVisible(false);
       Alert.alert('Sucesso', 'Funcionário criado com sucesso!');

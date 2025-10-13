@@ -56,6 +56,8 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
   });
   const [units, setUnits] = useState<Array<{ id: string, name: string }>>([]);
   const [loadingState, setLoadingState] = useState(false);
+  const [pixFieldHeight] = useState(new Animated.Value(0)); // Animação para o campo PIX
+  const [keyboardAvoidingEnabled, setKeyboardAvoidingEnabled] = useState(false);
 
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const modalAnim = useRef(new Animated.Value(height)).current;
@@ -153,6 +155,7 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
         unit: '',
         chavePix: ''
       });
+      setLoadingState(false); // Limpar loading interno
       onClose();
     });
   };
@@ -194,6 +197,7 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
       setLoadingState(true); // Iniciar loading interno
       onSubmit(formData);
       // Note: não finalizamos o loading aqui porque o componente pai vai fechar o modal
+      // ou pode mostrar mensagem de conversão automática
     }
   };
 
@@ -201,14 +205,40 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
   const availableRoles = userRole === 'admin' ? ROLES : ROLES.filter(r => ['deliv', 'attendant'].includes(r.value));
   const currentRoleIndex = availableRoles.findIndex(r => r.value === formData.role);
   const currentRoleLabel = currentRoleIndex >= 0 ? availableRoles[currentRoleIndex].label : 'Selecione uma função';
+  
   const prevRole = () => {
     const idx = currentRoleIndex > 0 ? currentRoleIndex - 1 : availableRoles.length - 1;
-    setFormData({ ...formData, role: availableRoles[idx].value });
+    const newRole = availableRoles[idx].value;
+    setFormData({ ...formData, role: newRole });
+    animatePixField(newRole === 'deliv');
   };
+  
   const nextRole = () => {
     const idx = (currentRoleIndex + 1) % availableRoles.length;
-    setFormData({ ...formData, role: availableRoles[idx].value });
+    const newRole = availableRoles[idx].value;
+    setFormData({ ...formData, role: newRole });
+    animatePixField(newRole === 'deliv');
   };
+
+  // Função para animar o campo PIX
+  const animatePixField = (shouldShow: boolean) => {
+    Animated.timing(pixFieldHeight, {
+      toValue: shouldShow ? 80 : 0, // Altura do campo when visível
+      duration: 250,
+      useNativeDriver: false, // Não pode usar native driver para height
+    }).start();
+  };
+
+  useEffect(() => {
+    animatePixField(formData.role === 'deliv');
+  }, [formData.role]);
+
+  // Limpar loading interno quando loading externo finalizar
+  useEffect(() => {
+    if (!externalLoading) {
+      setLoadingState(false);
+    }
+  }, [externalLoading]);
 
   const availableUnits = units;
   const currentUnitIndex = availableUnits.findIndex(u => u.id === formData.unit);
@@ -229,7 +259,137 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
     }
   };
 
-  if (!visible) return null;
+  if (!visible) return null;  // Função para renderizar o formulário
+  const renderForm = () => (
+    <>
+      <ScrollView 
+        style={styles.formContainer}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+      >
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Nome Completo</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.displayName}
+            onChangeText={(text) => setFormData({ ...formData, displayName: text })}
+            placeholder="Digite o nome completo"
+            placeholderTextColor="#718096"
+            onFocus={() => setKeyboardAvoidingEnabled(false)}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.email}
+            onChangeText={(text) => setFormData({ ...formData, email: text })}
+            placeholder="Digite o email"
+            placeholderTextColor="#718096"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            onFocus={() => setKeyboardAvoidingEnabled(false)}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Senha</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.password}
+            onChangeText={(text) => setFormData({ ...formData, password: text })}
+            placeholder="Digite a senha"
+            placeholderTextColor="#718096"
+            secureTextEntry
+            onFocus={() => setKeyboardAvoidingEnabled(true)}
+            onBlur={() => setKeyboardAvoidingEnabled(false)}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Confirmar Senha</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.confirmPassword}
+            onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
+            placeholder="Confirme a senha"
+            placeholderTextColor="#718096"
+            secureTextEntry
+            onFocus={() => setKeyboardAvoidingEnabled(true)}
+            onBlur={() => setKeyboardAvoidingEnabled(false)}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Função</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <TouchableOpacity onPress={prevRole}>
+              <ChevronLeft size={24} color="#718096" />
+            </TouchableOpacity>
+            <Text style={{ flex: 1, textAlign: 'center', color: '#333' }}>{currentRoleLabel}</Text>
+            <TouchableOpacity onPress={nextRole}>
+              <ChevronRight size={24} color="#718096" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Unidade</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <TouchableOpacity onPress={prevUnit} disabled={userRole === 'manager'}>
+              <ChevronLeft size={24} color={userRole === 'manager' ? '#ccc' : '#718096'} />
+            </TouchableOpacity>
+            <Text style={{ flex: 1, textAlign: 'center', color: '#333' }}>
+              {currentUnitName}
+            </Text>
+            <TouchableOpacity onPress={nextUnit} disabled={userRole === 'manager'}>
+              <ChevronRight size={24} color={userRole === 'manager' ? '#ccc' : '#718096'} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Campo PIX com animação suave */}
+        <Animated.View style={[{ height: pixFieldHeight, overflow: 'hidden' }]}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Chave PIX</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.chavePix}
+              onChangeText={(text) => setFormData({ ...formData, chavePix: text })}
+              placeholder="Digite a chave PIX"
+              placeholderTextColor="#718096"
+              onFocus={() => setKeyboardAvoidingEnabled(true)}
+              onBlur={() => setKeyboardAvoidingEnabled(false)}
+            />
+          </View>
+        </Animated.View>
+      </ScrollView>
+
+      <View style={styles.modalFooter}>
+        <TouchableOpacity 
+          style={styles.cancelButton} 
+          onPress={handleClose}
+          disabled={externalLoading}
+        >
+          <Text style={styles.cancelButtonText}>Cancelar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.submitButton} 
+          onPress={handleSubmit}
+          disabled={externalLoading}
+        >
+          {externalLoading ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Text style={styles.submitButtonText}>Criar Funcionário</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </>
+  );
 
   return (
     <View style={styles.container}>
@@ -265,128 +425,21 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
             <X size={24} color="#718096" />
           </TouchableOpacity>
-        </View>
-
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : "height"} 
-          style={{ width: '100%' }}
-        >
-          <ScrollView 
-            style={styles.formContainer}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: 20 }}
+        </View>        
+        {/* Removendo KeyboardAvoidingView para Android para evitar conflitos */}
+        {Platform.OS === 'ios' ? (
+          <KeyboardAvoidingView 
+            behavior="padding"
+            style={{ width: '100%', flex: 1 }}
+            enabled={keyboardAvoidingEnabled}
           >
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nome Completo</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.displayName}
-                onChangeText={(text) => setFormData({ ...formData, displayName: text })}
-                placeholder="Digite o nome completo"
-                placeholderTextColor="#718096"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
-                placeholder="Digite o email"
-                placeholderTextColor="#718096"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Senha</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.password}
-                onChangeText={(text) => setFormData({ ...formData, password: text })}
-                placeholder="Digite a senha"
-                placeholderTextColor="#718096"
-                secureTextEntry
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirmar Senha</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.confirmPassword}
-                onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
-                placeholder="Confirme a senha"
-                placeholderTextColor="#718096"
-                secureTextEntry
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Função</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <TouchableOpacity onPress={prevRole}>
-                  <ChevronLeft size={24} color="#718096" />
-                </TouchableOpacity>
-                <Text style={{ flex: 1, textAlign: 'center', color: '#333' }}>{currentRoleLabel}</Text>
-                <TouchableOpacity onPress={nextRole}>
-                  <ChevronRight size={24} color="#718096" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Unidade</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <TouchableOpacity onPress={prevUnit} disabled={userRole === 'manager'}>
-                  <ChevronLeft size={24} color={userRole === 'manager' ? '#ccc' : '#718096'} />
-                </TouchableOpacity>
-                <Text style={{ flex: 1, textAlign: 'center', color: '#333' }}>
-                  {currentUnitName}
-                </Text>
-                <TouchableOpacity onPress={nextUnit} disabled={userRole === 'manager'}>
-                  <ChevronRight size={24} color={userRole === 'manager' ? '#ccc' : '#718096'} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {formData.role === 'deliv' && (
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Chave PIX</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.chavePix}
-                  onChangeText={(text) => setFormData({ ...formData, chavePix: text })}
-                  placeholder="Digite a chave PIX"
-                  placeholderTextColor="#718096"
-                />
-              </View>
-            )}
-          </ScrollView>
-
-          <View style={styles.modalFooter}>
-            <TouchableOpacity 
-              style={styles.cancelButton} 
-              onPress={handleClose}
-              disabled={externalLoading} // Desabilitar durante o loading
-            >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.submitButton} 
-              onPress={handleSubmit}
-              disabled={externalLoading} // Desabilitar durante o loading
-            >
-              {externalLoading ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Text style={styles.submitButtonText}>Criar Funcionário</Text>
-              )}
-            </TouchableOpacity>
+            {renderForm()}
+          </KeyboardAvoidingView>
+        ) : (
+          <View style={{ width: '100%', flex: 1 }}>
+            {renderForm()}
           </View>
-        </KeyboardAvoidingView>
+        )}
       </Animated.View>
     </View>
   );

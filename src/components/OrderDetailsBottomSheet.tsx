@@ -39,6 +39,7 @@ interface Order {
   sellerName?: string;
   sellerId?: string;
   pharmacyUnitId?: string;
+  location?: any; // Coordenadas GPS ou null se não informado
   statusHistory?: Array<{
     status: string;
     timestamp: any;
@@ -563,6 +564,70 @@ const OrderDetailsBottomSheet: React.FC<OrderDetailsBottomSheetProps> = ({
               </View>
             )}
 
+            {/* Informação sobre localização GPS */}
+            <View style={styles.infoRow}>
+              <View style={styles.infoIconContainer}>
+                <MaterialIcons 
+                  name={currentOrder.location ? "gps-fixed" : "gps-off"} 
+                  size={16} 
+                  color={currentOrder.location ? "#38A169" : "#E53E3E"} 
+                />
+              </View>
+              <Text style={styles.infoLabel}>Localização GPS:</Text>
+              <Text style={[
+                styles.infoValue, 
+                { color: currentOrder.location ? "#38A169" : "#E53E3E" }
+              ]}>
+                {currentOrder.location ? "Disponível" : "Não informada"}
+              </Text>
+            </View>
+
+            {/* Alerta sobre localização não informada */}
+            {!currentOrder.location && (
+              <View style={[styles.cancelReasonContainer, { 
+                backgroundColor: '#FFF3CD', 
+                borderLeftColor: '#FF8C00',
+                borderLeftWidth: 4 
+              }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <MaterialIcons name="warning" size={16} color="#FF8C00" />
+                  <Text style={[styles.cancelReasonLabel, { 
+                    color: '#B45309', 
+                    marginLeft: 6,
+                    marginBottom: 0 
+                  }]}>
+                    Atenção: Localização não informada
+                  </Text>
+                </View>
+                <Text style={[styles.cancelReasonText, { color: '#92400E' }]}>
+                  O vendedor não informou a localização GPS. O entregador precisará usar apenas o endereço textual para encontrar o destino.
+                </Text>
+              </View>
+            )}
+
+            {/* Confirmação de localização disponível */}
+            {currentOrder.location && (
+              <View style={[styles.cancelReasonContainer, { 
+                backgroundColor: '#D1FAE5', 
+                borderLeftColor: '#38A169',
+                borderLeftWidth: 4 
+              }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <MaterialIcons name="check-circle" size={16} color="#38A169" />
+                  <Text style={[styles.cancelReasonLabel, { 
+                    color: '#059669', 
+                    marginLeft: 6,
+                    marginBottom: 0 
+                  }]}>
+                    Localização GPS disponível
+                  </Text>
+                </View>
+                <Text style={[styles.cancelReasonText, { color: '#047857' }]}>
+                  O vendedor informou as coordenadas GPS. O entregador poderá navegar diretamente até o destino.
+                </Text>
+              </View>
+            )}
+
             {/* Informações do pedido */}
             <View style={styles.infoRow}>
               <View style={styles.infoIconContainer}>
@@ -573,14 +638,24 @@ const OrderDetailsBottomSheet: React.FC<OrderDetailsBottomSheetProps> = ({
                 {formatFirestoreTimestamp(currentOrder.date)}
               </Text>
             </View>
-            
-            <View style={styles.infoRow}>
+              <View style={styles.infoRow}>
               <View style={styles.infoIconContainer}>
                 <DollarSign size={16} color="#718096" />
               </View>
               <Text style={styles.infoLabel}>Preço Total:</Text>
               <Text style={styles.infoValue}>{currentOrder.price}</Text>
             </View>
+
+            {/* Informações do vendedor */}
+            {currentOrder.sellerName && (
+              <View style={styles.infoRow}>
+                <View style={styles.infoIconContainer}>
+                  <Store size={16} color="#718096" />
+                </View>
+                <Text style={styles.infoLabel}>Vendedor:</Text>
+                <Text style={styles.infoValue}>{currentOrder.sellerName}</Text>
+              </View>
+            )}
 
             {/* Motivo de cancelamento - se aplicável */}
             {currentOrder.status === 'Cancelado' && currentOrder.cancelReason && (
@@ -756,12 +831,11 @@ const OrderDetailsBottomSheet: React.FC<OrderDetailsBottomSheetProps> = ({
                   );
                 })()}
               </View>
-            )}
-
+            )}            
             {/* Controles do Admin */}
             {isAdmin && (
               <View style={styles.adminControlsContainer}>
-                {currentOrder.status !== 'Cancelado' && currentOrder.status !== 'Entregue' ? (
+                {currentOrder.status !== 'Cancelado' ? (
                   <TouchableOpacity 
                     style={styles.cancelButton}
                     onPress={() => setCancelModalVisible(true)}

@@ -71,6 +71,8 @@ type MotorcycleBottomSheetProps = {
   selectedMotorcycle: string | null;
   setSelectedMotorcycle: (id: string) => void;
   startWork: () => void;
+  isStartingWork?: boolean;
+  onClose?: () => void;
 };
 
 // Extend props to include pagination controls
@@ -103,42 +105,80 @@ export const MotorcycleBottomSheet: React.FC<MotorcycleBottomSheetProps> = ({
   selectedMotorcycle,
   setSelectedMotorcycle,
   startWork,
-}) => (
-  <BottomSheet
-    ref={bottomSheetRef}
-    index={-1}
-    snapPoints={['60%']}
-    enablePanDownToClose={true}
-    backgroundStyle={styles.bottomSheetBackground}
-  >
-    <View style={styles.bottomSheetContent}>
-      <Text style={styles.bottomSheetTitle}>Selecione uma moto</Text>
-      <BottomSheetScrollView>
-        {dummyMotorcycles.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={[
-              styles.motorcycleItem,
-              selectedMotorcycle === item.id && styles.selectedMotorcycleItem,
-            ]}
-            onPress={() => setSelectedMotorcycle(item.id)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.motorcyclePlate}>{item.plate}</Text>
-          </TouchableOpacity>
-        ))}
-      </BottomSheetScrollView>
-      <TouchableOpacity
-        style={[styles.confirmButton, !selectedMotorcycle && styles.confirmButtonDisabled]}
-        onPress={startWork}
-        disabled={!selectedMotorcycle}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.confirmButtonText}>Confirmar</Text>
-      </TouchableOpacity>
-    </View>
-  </BottomSheet>
-);
+  isStartingWork = false,
+  onClose,
+}) => {
+  const isProgrammaticCloseRef = React.useRef(false);
+
+  const handleSheetChange = (index: number) => {
+    // Only call onClose when user drags down (index -1) AND it's not programmatic
+    if (index === -1 && onClose && !isProgrammaticCloseRef.current) {
+      onClose();
+    }
+    
+    // Reset flag when sheet closes
+    if (index === -1) {
+      setTimeout(() => {
+        isProgrammaticCloseRef.current = false;
+      }, 500);
+    }
+  };
+
+  const handleStartWork = () => {
+    isProgrammaticCloseRef.current = true; // Mark as programmatic close
+    startWork();
+  };
+
+  return (
+    <BottomSheet
+      ref={bottomSheetRef}
+      index={-1}
+      snapPoints={['60%']}
+      enablePanDownToClose={true}
+      backgroundStyle={styles.bottomSheetBackground}
+      onChange={handleSheetChange}
+    >
+      <View style={styles.bottomSheetContent}>
+        <Text style={styles.bottomSheetTitle}>Selecione uma moto</Text>
+        <BottomSheetScrollView>
+          {dummyMotorcycles.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.motorcycleItem,
+                selectedMotorcycle === item.id && styles.selectedMotorcycleItem,
+              ]}
+              onPress={() => setSelectedMotorcycle(item.id)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.motorcyclePlate}>{item.plate}</Text>
+            </TouchableOpacity>
+          ))}
+        </BottomSheetScrollView>
+        <TouchableOpacity
+          style={[
+            styles.confirmButton, 
+            (!selectedMotorcycle || isStartingWork) && styles.confirmButtonDisabled
+          ]}
+          onPress={!isStartingWork ? handleStartWork : undefined}
+          disabled={!selectedMotorcycle || isStartingWork}
+          activeOpacity={isStartingWork ? 1 : 0.7}
+        >
+          {isStartingWork ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={[styles.confirmButtonText, styles.loadingText]}>
+                Iniciando expediente...
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.confirmButtonText}>Confirmar</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </BottomSheet>
+  );
+};
 
 export const OrdersBottomSheet: React.FC<OrdersBottomSheetProps> = ({
   bottomSheetRef,

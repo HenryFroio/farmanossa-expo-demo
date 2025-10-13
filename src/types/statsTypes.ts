@@ -4,7 +4,8 @@ export type RootStackParamList = {
   Stats: {
     type: 'deliveryman' | 'unit';
     ids: string[];
-    managerUnit?: string | null; // Added managerUnit
+    managerUnit?: string | null;
+    allDeliverymenStats?: Array<{ id: string; name: string; deliveries: number; averageRating: number }>;
   };
 };
 

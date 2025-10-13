@@ -211,89 +211,87 @@ const CreateVehicleModal: React.FC<CreateVehicleModalProps> = ({
               { translateY: modalAnim },
               { translateY: modalY }
             ]
-          }
-        ]}
+          }        ]}
         {...panResponder.panHandlers}
       >
         <View style={styles.modalDragIndicator} />
 
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Novo Veículo</Text>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <X size={24} color="#718096" />
-          </TouchableOpacity>
-        </View>
-
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ width: '100%' }}
+          style={{ flex: 1 }}
         >
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Novo Veículo</Text>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <X size={24} color="#718096" />
+            </TouchableOpacity>          
+          </View>
+
           <ScrollView
-            style={[styles.formContainer, { flex: 1 }]} // Added flex: 1
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }} // Added flexGrow: 1
-          >
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Placa</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.plate}
-                onChangeText={(text) => setFormData({ ...formData, plate: text })}
-                placeholder="Digite a placa"
-                placeholderTextColor="#718096"
-                autoCapitalize="characters"
-              />
-            </View>
+          style={styles.formContainer}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 20 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Placa</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.plate}
+              onChangeText={(text) => setFormData({ ...formData, plate: text })}
+              placeholder="Digite a placa"
+              placeholderTextColor="#718096"
+              autoCapitalize="characters"
+            />
+          </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Quilometragem</Text>
-              <TextInput
-                style={styles.input}
-                value={String(formData.km)}
-                onChangeText={(text) => {
-                  const km = parseInt(text) || 0;
-                  setFormData({ ...formData, km });
-                }}
-                placeholder="Digite a quilometragem"
-                placeholderTextColor="#718096"
-                keyboardType="numeric"
-              />
-            </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Quilometragem</Text>
+            <TextInput
+              style={styles.input}
+              value={String(formData.km)}
+              onChangeText={(text) => {
+                const km = parseInt(text) || 0;
+                setFormData({ ...formData, km });
+              }}              placeholder="Digite a quilometragem"
+              placeholderTextColor="#718096"
+              keyboardType="numeric"
+            />
+          </View>
 
-            <View style={styles.inputGroup}>
+          <View style={styles.inputGroup}>
               <Text style={styles.label}>Unidade</Text>
-              <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, userRole === 'manager' && styles.disabledPickerContainer]}>
+              <View style={[styles.unitSelector, userRole === 'manager' && styles.disabledPickerContainer]}>
                 <TouchableOpacity onPress={prevUnit} disabled={userRole === 'manager'}>
                   <ChevronLeft size={24} color={userRole === 'manager' ? '#ccc' : '#718096'} />
                 </TouchableOpacity>
-                <Text style={{ flex: 1, textAlign: 'center', color: '#333' }}>
+                <Text style={{ flex: 1, textAlign: 'center', color: '#2D3748', fontSize: 16 }}>
                   {currentUnitName}
                 </Text>
                 <TouchableOpacity onPress={nextUnit} disabled={userRole === 'manager'}>
                   <ChevronRight size={24} color={userRole === 'manager' ? '#ccc' : '#718096'} />
-                </TouchableOpacity>
-              </View>
+                </TouchableOpacity>              
+                </View>
             </View>
           </ScrollView>
 
           <View style={styles.modalFooter}>
-            <TouchableOpacity 
-              style={styles.cancelButton} 
-              onPress={handleClose}
-              disabled={externalLoading || isLoading} // Desabilitar durante o loading
-            >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.submitButton} 
-              onPress={handleSubmit}
-              disabled={externalLoading || isLoading} // Desabilitar durante o loading
-            >
-              {externalLoading || isLoading ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Text style={styles.submitButtonText}>Criar Veículo</Text>
-              )}
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={handleClose}
+            disabled={externalLoading || isLoading}
+          >
+            <Text style={styles.cancelButtonText}>Cancelar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.submitButton} 
+            onPress={handleSubmit}
+            disabled={externalLoading || isLoading}
+          >
+            {externalLoading || isLoading ? (              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Text style={styles.submitButtonText}>Criar Veículo</Text>
+            )}
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>

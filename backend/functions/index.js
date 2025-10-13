@@ -475,6 +475,22 @@ exports.orderStatusChanged = functions.firestore
             }
           );
         }
+
+        // 🔄 BigQuery Sync: Adicionar à fila quando pedido for entregue ou cancelado
+        if (status === 'Entregue' || status === 'Cancelado') {
+          try {
+            await db.collection('bigquery_sync_queue').add({
+              orderId: context.params.orderId,
+              queuedAt: admin.firestore.FieldValue.serverTimestamp(),
+              processed: false,
+              retries: 0
+            });
+            console.log(`Pedido ${context.params.orderId} (${status}) adicionado à fila BigQuery`);
+          } catch (syncError) {
+            console.error('Erro ao adicionar à fila BigQuery:', syncError);
+            // Não interrompe o fluxo principal
+          }
+        }
       } catch (error) {
         console.error('Erro ao processar mudança de status:', error);
       }
@@ -1016,3 +1032,61 @@ exports.generateMonthlyReport = functions
     }
   });
 
+// 🏍️ Função para monitorar mudanças em deliveryRuns
+exports.deliveryRunStatusChanged = functions.firestore
+  .document('deliveryRuns/{runId}')
+  .onWrite(async (change, context) => {
+    try {
+      // Se for deleção, ignorar
+      if (!change.after.exists) {
+        return null;
+      }
+
+      const newData = change.after.data();
+      const runId = context.params.runId;
+
+      // 🔄 BigQuery Sync: Adicionar à fila quando run for completada
+      if (newData.status === 'completed') {
+        // Verificar se já foi adicionado à fila (evitar duplicatas)
+        const existingQueue = await db.collection('bigquery_delivery_runs_sync_queue')
+          .where('runId', '==', runId)
+          .where('processed', '==', false)
+          .limit(1)
+          .get();
+
+        if (existingQueue.empty) {
+          await db.collection('bigquery_delivery_runs_sync_queue').add({
+            runId: runId,
+            queuedAt: admin.firestore.FieldValue.serverTimestamp(),
+            processed: false,
+            retries: 0
+          });
+          console.log(`DeliveryRun ${runId} adicionado à fila BigQuery`);
+        } else {
+          console.log(`DeliveryRun ${runId} já está na fila`);
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Erro ao processar mudança em deliveryRun:', error);
+      return null;
+    }
+  });
+
+// ============================================
+// BIGQUERY BATCH SYNC
+// ============================================
+// Import and export batch sync functions
+const batchSync = require('./batchSync');
+const batchSyncDeliveryRuns = require('./batchSyncDeliveryRuns');
+
+exports.batchSyncToBigQuery = batchSync.batchSyncToBigQuery;
+exports.syncDeliveryRunsToBigQuery = batchSyncDeliveryRuns.syncDeliveryRunsToBigQuery;
+
+// ============================================
+// BIGQUERY REST APIs
+// ============================================
+// High-performance APIs for analytics dashboard
+const bigqueryApi = require('./bigqueryApi');
+exports.bigqueryApi = bigqueryApi.bigqueryApi;

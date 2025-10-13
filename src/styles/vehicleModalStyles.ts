@@ -20,12 +20,12 @@ export default StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
+  },  modalContent: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: height * 0.9,
+    minHeight: height * 0.5,
+    maxHeight: height * 0.85,
     width: '100%',
     shadowColor: '#000',
     shadowOffset: {
@@ -60,9 +60,9 @@ export default StyleSheet.create({
   },
   closeButton: {
     padding: 4,
-  },
-  formContainer: {
+  },  formContainer: {
     padding: 16,
+    flex: 1,
   },
   inputGroup: {
     marginBottom: 16,
@@ -126,5 +126,16 @@ export default StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
+  },
+  unitSelector: {
+    backgroundColor: '#F7FAFC',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 15,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 });

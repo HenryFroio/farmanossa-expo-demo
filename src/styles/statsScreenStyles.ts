@@ -378,10 +378,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
-  },
-  orderDate: {
-    fontSize: 14,
+  },  orderDate: {
+    fontSize: 12,
     color: '#666',
+    textAlign: 'right',
+    flex: 1,
   },
   orderDetails: {
     flexDirection: 'row',
@@ -430,6 +431,10 @@ const styles = StyleSheet.create({
   },
   filterButtonActive: {
     backgroundColor: '#FFE5E5',
+  },
+  filterButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: colors.border,
   },
   filterButtonText: {
     color: '#333',
@@ -656,14 +661,72 @@ const styles = StyleSheet.create({
     ...shadows.small,
     borderLeftWidth: 4,
     borderLeftColor: colors.primary,
-  },
-  pontoButtonText: {
+  },  pontoButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
     marginLeft: 12,
     flex: 1,
-  }
+  },
+  recentOrdersTitle: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  realtimeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  realtimeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success,
+    marginRight: 6,
+  },
+  realtimeText: {
+    fontSize: 12,
+    color: colors.success,
+    fontWeight: '500',
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  viewMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 75, 43, 0.1)',
+  },
+  viewMoreText: {
+    fontSize: 12,
+    color: '#FF4B2B',
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  loadingTextContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingMainText: {
+    fontSize: 16,
+    color: colors.text,
+    textAlign: 'center',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  loadingSubText: {
+    fontSize: 13,
+    color: colors.primary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    opacity: 0.8,
+  },
 });
 
 export default styles;
