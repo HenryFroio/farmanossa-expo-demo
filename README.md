@@ -22,7 +22,7 @@ A comprehensive **data engineering solution** showcasing **hybrid data architect
 
 ### **Architecture Evolution: Dual-Path Data Processing**
 
-The platform implements a **Kappa-inspired hybrid architecture** optimizing for both operational real-time needs and analytical performance:
+The platform implements **Kappa Architecture** optimizing for both operational real-time needs and analytical performance:
 
 ```
 ┌────────────────────────────────────────────────────────┐
