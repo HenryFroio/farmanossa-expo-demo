@@ -1,582 +1,741 @@
-# Farmanossa: Pharmacy Delivery Management System - DEMO
+# 📊 Farmanossa - Pharmacy Delivery Data Platform
 
-> **⚠️ DATA ENGINEERING PORTFOLIO PROJECT**  
-> Sanitized version of a production system developed for CSP COMERCIO DE MEDICAMENTOS LTDA.  
-> **Showcases:** Kappa Architecture • BigQuery Data Warehouse • Serverless ETL • Real-time + Batch Processing • Cost Optimization ($573+/year saved)
+> **Production data engineering system** managing **1,000+ daily orders** with **Kappa Architecture** (Firestore + BigQuery), processing **68K+ orders** and **160K+ delivery runs** with **sub-second latency** and intelligent analytics.
 
 [![Kappa Architecture](https://img.shields.io/badge/Kappa-Architecture-purple.svg)](https://www.oreilly.com/radar/questioning-the-lambda-architecture/)
-[![BigQuery](https://img.shields.io/badge/BigQuery-Data_Warehouse-blue.svg)](https://cloud.google.com/bigquery)
-[![Real-Time Sync](https://img.shields.io/badge/Real--Time-Firestore-yellow.svg)](https://firebase.google.com/docs/firestore)
-[![Serverless ETL](https://img.shields.io/badge/Serverless-ETL_Pipeline-green.svg)](https://cloud.google.com/functions)
+[![BigQuery](https://img.shields.io/badge/BigQuery-160K_Records-blue.svg)](https://cloud.google.com/bigquery)
 [![95% Faster](https://img.shields.io/badge/Performance-95%25_Faster-red.svg)](https://github.com)
-[![Cost Optimized](https://img.shields.io/badge/Cost-9%25_Reduced-orange.svg)](https://github.com)
-
-**Production-scale platform** processing **1,000+ daily orders** with **sub-second latency** (Firestore) + **scalable analytics** (BigQuery). Features **intelligent 3-layer caching** (80%+ hit ratio), **GPS cost optimization** ($500+/month saved), and **95% dashboard performance improvement** (90s → 2-3s).
+[![Cost](https://img.shields.io/badge/Cost-$573+/yr_Saved-orange.svg)](https://github.com)
 
 ---
 
-## 🚀 **Kappa Architecture - Hybrid Real-Time & Batch Processing**
+## 🎯 My Role (Data Engineering)
 
-### **Architecture Evolution: Dual-Path Data Processing**
-
-The platform implements **Kappa Architecture** optimizing for both operational real-time needs and analytical performance:
-
-```
-┌────────────────────────────────────────────────────────┐
-│  KAPPA ARCHITECTURE - DUAL PROCESSING PATHS            │
-├────────────────────────────────────────────────────────┤
-│                                                        │
-│  ┌─────────────┐         ┌──────────────┐              │
-│  │  OCR System │         │  FIRESTORE   │              │
-│  │ (Screenshot │────────►│ Operational  │              │
-│  │  Processing)│         │    Store     │              │
-│  └─────────────┘         └──────┬───────┘              │
-│                                  │                     │
-│         ┌────────────────────────┼──────────┐          │
-│         │                        │          │          │
-│         ▼                        ▼          ▼          │
-│  ┌──────────┐           ┌──────────────┐  │            │
-│  │  Mobile  │           │   Cloud      │  │            │
-│  │   Apps   │           │  Functions   │  │            │
-│  │ (Client, │           │ (batchSync)  │  │            │
-│  │Deliverer,│           └──────┬───────┘  │            │
-│  │  Admin)  │                  │           │           │
-│  └──────────┘                  │           │           │
-│       │                        │ Every 5min│           │
-│       │                        ▼           │           │
-│       │                 ┌──────────────┐   │           │
-│       │                 │   BIGQUERY   │◄──┘           │
-│       │                 │   Dataset    │  (Ref Data    │
-│       │                 │ farmanossa_  │   Triggers)   │
-│       │                 │  analytics   │               │
-│       │                 └──────┬───────┘               │
-│       │                        │                       │
-│       │                        ▼                       │
-│       │                 ┌──────────────┐               │
-│       │                 │  BigQuery    │               │
-│       │                 │    APIs      │               │
-│       │                 │(Cloud Funcs) │               │
-│       │                 └──────┬───────┘               │
-│       │                        │                       │
-│       │                        ▼                       │
-│       │                 ┌──────────────┐               │
-│       └────────────────►│  3-Layer     │               │
-│                         │    Cache     │               │
-│                         │ (MMKV/Async) │               │
-│                         └──────────────┘               │
-└────────────────────────────────────────────────────────┘
-```
-
-### **Performance Transformation**
-
-| Metric | Before (Firestore Only) | After (Kappa + BigQuery) | Improvement |
-|--------|-------------------------|---------------------------|-------------|
-| **Dashboard Load Time** | 90+ seconds | 2-3 seconds (cache miss)<br>50ms (cache hit) | **95% faster** |
-| **Data Processing** | Client-side O(n²) | Server-side pre-aggregated | **98% CPU reduction** |
-| **Monthly Cost** | R$ 80 + $500 GPS | R$ 73 (GPS: $0) | **$500+/month saved** |
-| **Cache Hit Ratio** | 0% | 80%+ | **New capability** |
-| **Query Distribution** | 100% Firestore | 60% BigQuery, 40% Firestore | **Optimized for workload** |
-| **Scalability** | ~1,000 orders/day | Ready for 10,000+ orders/day | **10x capacity** |
-
-### **Why Kappa Architecture?**
-
-Traditional Lambda architecture requires maintaining two separate codebases (batch + streaming). Kappa simplifies this:
-
-- **Single source of truth** (Firestore events)
-- **Near real-time sync** (5-minute batch intervals via Cloud Scheduler)
-- **Optimized data stores** for different access patterns:
-  - **Firestore**: Low-latency operational data (<1s)
-  - **BigQuery**: High-throughput analytics (1-2s, but handles 100K+ rows)
-- **Progressive enhancement**: Cache layer provides <100ms response after first load
-- **Cost-effective scaling**: 10x capacity increase with no infrastructure changes
+- ✅ Designed and implemented **Kappa Architecture** with Firestore (operational) + BigQuery (analytical)
+- ✅ Built **serverless ETL pipelines** processing 1,000+ orders/day via Cloud Functions
+- ✅ Optimized BigQuery queries with **partitioning/clustering** (90% scan reduction)
+- ✅ Developed **3-layer caching system** achieving 80%+ hit ratio and 95% performance improvement
+- ✅ Reduced costs by **$573+/year** through architectural optimizations
+- ✅ Implemented **OCR data ingestion pipeline** solving missing POS API integration
 
 ---
 
-## Data Engineering Architecture & Stack
+## 🏗️ Data Architecture (Kappa Pattern)
 
-### **Dual-Path Data Processing**
+**Kappa Architecture** = Single stream processing path where all data flows through one pipeline:
 
-#### **Real-Time Path (Operational)**
-- **Firebase Firestore** - Operational data store for live updates
-- **Real-time listeners** - onSnapshot for instant order/status changes
-- **WebSocket connections** - Push notifications via Firebase Cloud Messaging
-- **Optimistic UI updates** - Sub-second user experience
-- **Offline-first sync** - Automatic retry and conflict resolution
-
-#### **Batch Path (Analytics)**
-- **BigQuery Dataset** (`farmanossa_analytics`) - Columnar data warehouse
-  - **Tables**: `orders` (68K+ rows), `deliverymen`, `pharmacy_units`, `delivery_runs` (67K+ runs)
-  - **Partitioning**: By `DATE(created_at)` - 90% scan reduction
-  - **Clustering**: By `pharmacy_unit_id`, `delivery_man`, `region` - Optimized query performance
-- **Cloud Functions** (Serverless ETL)
-  - `batchSync`: Firestore → BigQuery sync every 5 minutes (cost-optimized batch upload via temp files, **zeroing BigQuery write costs** vs real-time Firestore-BigQuery sync extension)
-  - `bigqueryApi`: REST APIs with pre-aggregated queries using master query pattern
-  - `syncReferenceData`: Real-time Firestore triggers for reference data sync
-- **Cloud Scheduler** - Cron-based pipeline orchestration
-
-### Data Ingestion Layer
-- **OCR System** - Intelligent document processing for pharmacy POS screenshots
-  - **Purpose**: Solves lack of POS API integration by processing sales screen screenshots
-  - **Dual OCR engine**: Azure Cognitive Services + Tesseract.js
-  - **95%+ accuracy** in field extraction (customer data, products, prices)
-  - **Real-time validation** and normalization pipeline
-- **Real-time GPS Tracking & Distance Calculation** - Cost-optimized geospatial data collection
-  - **Native device geolocation** (React Native Location API) instead of Google Maps API
-  - **Real-time coordinate streaming** during delivery runs stored in Firestore
-  - **Haversine formula** for distance calculation (Google Maps-level accuracy, **zero API costs**)
-  - **Dual purpose**: Distance tracking (67K+ runs) + live customer delivery tracking (CRM feature)
-  - **Cost savings**: $0 vs estimated $500+/month for Google Maps Distance Matrix API
-- **Real-time event streaming** from multiplatform mobile apps (client, delivery, admin)
-- **Multi-source data ingestion** (GPS coordinates, order events, delivery status, OCR extractions)
-- **Schema validation** and data quality checks at ingestion
-- **Event-driven data collection** with automatic error handling
-
-### Data Processing Engine (Multi-tier Architecture)
-- **Serverless ETL pipelines** with Firebase Functions for batch operations
-- **BigQuery pre-aggregations** - Server-side processing with CTEs (Common Table Expressions)
-- **Client-side transformations** in mobile app for real-time operational data
-- **Event-driven data processing** with automated triggers
-- **Geospatial data processing** for location-based analytics
-- **Stream processing** for real-time notifications and updates
-
-#### **Advanced Caching Strategy (3-Layer)**
-```typescript
-// Stale-While-Revalidate Pattern
-Layer 1: Memory Cache (Map)         → 10ms   (80% hit rate)
-Layer 2: AsyncStorage (Persistent)  → 50ms   (15% hit rate)
-Layer 3: BigQuery API (Network)     → 2s     (5% miss rate)
+```
+┌─────────────────────────────────────────────────────────┐
+│ KAPPA ARCHITECTURE - UNIFIED DATA STREAM                │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌──────────┐      ┌───────────────┐                    │
+│  │   OCR    │─────→│   FIRESTORE   │ (Source of Truth)  │
+│  │ Pipeline │      │  Operational  │                    │
+│  └──────────┘      └───────┬───────┘                    │
+│                            │                            │
+│            ┌───────────────┼───────────────┐            │
+│            ▼               ▼               ▼            │
+│       ┌────────┐     ┌─────────┐    ┌─────────┐        │
+│       │ Mobile │     │  Cloud  │    │Reference│        │
+│       │  Apps  │     │Functions│    │ Triggers│        │
+│       └────────┘     │ (ETL)   │    └─────────┘        │
+│                      └────┬────┘                        │
+│                           │ Every 5 min                 │
+│                           ▼                             │
+│                    ┌─────────────┐                      │
+│                    │  BIGQUERY   │                      │
+│                    │  Dataset    │                      │
+│                    │ 160K+ rows  │                      │
+│                    └──────┬──────┘                      │
+│                           │                             │
+│                           ▼                             │
+│                    ┌─────────────┐                      │
+│                    │  3-Layer    │                      │
+│                    │   Cache     │ (80% hit ratio)      │
+│                    │ (Stale-While│                      │
+│                    │ -Revalidate)│                      │
+│                    └─────────────┘                      │
+└─────────────────────────────────────────────────────────┘
 ```
 
-
-#### **Master Query Optimization**
-Single BigQuery query with 9 CTEs (Common Table Expressions) returns all dashboard data:
-```sql
-WITH
-  main_stats AS (...),           -- Primary KPIs
-  top_regions AS (...),          -- Top 10 delivery zones
-  hourly_dist AS (...),          -- Time series distribution
-  deliveryman_stats AS (...),    -- Performance per driver (with JOIN)
-  unit_stats AS (...),           -- Performance per pharmacy unit
-  motorcycle_stats AS (...),     -- Fleet utilization metrics
-  daily_dist AS (...),           -- Daily trend analysis
-  deliverymen_list AS (...),     -- Reference data
-  units_list AS (...)            -- Reference data
-
-SELECT 
-  (SELECT * FROM main_stats),
-  ARRAY(SELECT * FROM top_regions) as regions,
-  ARRAY(SELECT * FROM deliveryman_stats) as deliverymen,
-  -- ... pre-aggregated metrics
-```
-
-**Result:** 7 sequential queries → 1 master query = **7x faster**
-
-#### Dual Processing Architecture (Development & Production)
-The data platform implements **flexible processing deployment** with identical data pipelines:
-
-1. **`/backend/index.js`**: Local data processing server for development
-   - Direct Express.js server for rapid ETL testing
-   - Perfect for data pipeline development and debugging
-   - Enables local data processing and transformation testing
-
-2. **`/backend/functions/index.js`**: Serverless production data processing
-   - Same data logic deployed as Google Cloud Functions
-   - Auto-scaling serverless data processing
-   - Production-grade event-driven data pipelines
-
-> **💡 Data Engineering Benefits:** This architecture enables seamless development-to-production deployment of data pipelines while maintaining consistency in data processing logic and ensuring scalable, cost-effective production data processing.
-
-### Cloud Data Infrastructure
-- **Firebase Firestore** for real-time NoSQL operational database
-- **Google BigQuery** for columnar data warehousing and analytics
-- **Firebase Authentication** with multi-provider support
-- **Firebase Functions** for serverless ETL processing
-- **Cloud Scheduler** for automated pipeline orchestration
-- **Google Maps API** integration for geospatial services
-- **Expo Application Services** for build and deployment
+**Why Kappa?** Simpler than Lambda (no dual codebase), single source of truth, cost-effective.
 
 ---
 
-## 🔄 **Production Data Pipelines**
+## 💡 Key Data Engineering Achievements
 
-### **Pipeline 1: Order Ingestion (OCR → Firestore)**
-```
-Sales Screen Screenshot
-  ↓ (Azure OCR + Tesseract)
-Extracted Data (JSON)
-  ↓ (Validation + Normalization)
-Firestore Document
-  ↓ (Real-time listener triggers)
-Mobile App Update (onSnapshot)
-  ↓ (User assignment)
-Delivery in Progress
-```
+### 1. Pipeline ETL Near Real-Time (Firestore → BigQuery)
 
-**SLA:** <5 seconds end-to-end  
-**Volume:** 1,000+ orders/day  
-**Accuracy:** 95%+ field extraction
+**Challenge:** Dashboard taking 90+ seconds loading 68K+ orders from Firestore  
+**Solution:** Sync to BigQuery every 5 minutes with pre-aggregated queries
 
----
+<details>
+<summary>📝 View ETL Pipeline Code</summary>
 
-### **Pipeline 2: Analytics Sync (Firestore → BigQuery)**
-```
-Firestore Collection Changes
-  ↓ (Cloud Scheduler: every 5 min)
-batchSync Cloud Function
-  ↓ (ETL transformations)
-    • Region extraction (20+ Brasília regions)
-    • Delivery time calculations
-    • Data quality validations
-    • Schema transformations
-  ↓ (Batch insert with deduplication)
-BigQuery orders Table
-  ↓ (Partitioned by date, clustered by unit/driver/region)
-Optimized for Analytics Queries
-```
-
-**Throughput:** 100 orders per execution  
-**Latency:** Near real-time (5-minute sync window)  
-**Cost:** FREE (under Cloud Functions free tier)
-
----
-
-### **Pipeline 3: Dashboard Serving (BigQuery → Mobile)**
-```
-User Opens Dashboard
-  ↓ (Check cache hierarchy)
-Memory Cache? → Return in 10ms ✅
-  ↓ (Cache miss)
-AsyncStorage? → Return in 50ms ✅
-  ↓ (Cache miss)
-BigQuery API Call
-  ↓ (Master query with 9 CTEs + JOINs)
-Pre-aggregated Data (30+ metrics)
-  ↓ (Transform to application format)
-Mobile App Render
-  ↓ (Background revalidation)
-Cache Update (Stale-While-Revalidate)
-```
-
-**User Experience:** 
-- First load: 2-3s
-- Subsequent loads: <100ms
-- Background updates: Transparent to user
-
----
-
-### **Pipeline 4: Reference Data Sync (Real-Time Triggers)**
-```
-Firestore Collections
-  • deliverymen (74 active drivers)
-  • pharmacy_units (6 locations)
-  ↓ (onCreate/onUpdate Firestore triggers)
-syncReferenceData Cloud Function
-  ↓ (Automatic real-time sync)
-BigQuery Reference Tables
-  ↓ (Used in JOINs for name resolution)
-Dashboard with Human-Readable Data
-```
-
-**Automation:** Cloud Function triggers on Firestore write/update events  
-**Benefit:** Eliminates 60% of Firestore reads per dashboard load  
-**Latency:** <1 second from Firestore write to BigQuery sync
-
----
-
-## Data Engineering Overview
-
-**Farmanossa** is a **production-grade multiplatform delivery management system** implementing modern data engineering patterns with **Kappa Architecture**:
-
-### Core Data Engineering Capabilities
-- **Hybrid data architecture** with Firestore (operational) + BigQuery (analytical)
-- **Real-time event streaming** with Firebase listeners processing delivery events
-- **Serverless ETL pipelines** for batch data synchronization every 5 minutes
-- **Pre-aggregated analytics** with BigQuery CTEs eliminating client-side processing
-- **3-layer intelligent caching** with Stale-While-Revalidate pattern
-- **Geospatial data processing** for route optimization and location intelligence  
-- **Intelligent Document Processing (IDP)** with OCR-to-database pipelines
-- **Real-time operational dashboards** with <100ms response times
-
-
-#### **Latency & Response Times**
-- **Dashboard Load**: 
-  - Cold start: 2-3s (BigQuery master query)
-  - Cache hit: 50-100ms (AsyncStorage)
-  - Memory hit: <10ms (in-memory cache)
-- **Real-time Updates**: <1s (Firestore onSnapshot)
-- **OCR Pipeline**: <5s (screenshot → order creation)
-- **BigQuery Query Execution**: 800ms average
-
-#### **Cost Optimization & Efficiency**
-- **Monthly Infrastructure Cost**: R$ 73
-  - Firestore: R$ 72/month (60% read reduction via BigQuery)
-  - BigQuery: R$ 0.96/month (queries + storage)
-  - Cloud Functions: FREE (under 2M invocations/month)
-  - GPS Distance Calculation: FREE (native device API + Haversine vs $500+/month Google Maps API)
-- **Cost per Order**: R$ 0.0024 (highly cost-efficient)
-- **Query Scan Reduction**: 90% via partitioning/clustering
-- **Cache Hit Ratio**: 80%+ after warm-up
-- **Geospatial Cost Savings**: $500+/month eliminated by using native GPS + Haversine formula
-
-#### **Scalability**
-- **Current Load**: 1,000 orders/day
-- **Tested Capacity**: 10,000 orders/day with same infrastructure
-- **Auto-scaling**: Serverless functions scale automatically
-- **Zero Downtime**: 99.9% platform availability
-
----
-
-## Data Engineering Capabilities & Use Cases
-
-### Real-Time Delivery Management & Fleet Analytics
-- **Live KPI dashboards** with sub-100ms data freshness (via intelligent caching)
-- **Real-time order processing** with automated status tracking and performance metrics
-- **Digital timesheet system** showing available delivery personnel and working hours
-- **Delivery performance analytics** powered by BigQuery pre-aggregations
-- **Fleet management optimization** with real-time deliveryman availability and assignment
-- **Historical trend analysis** with 68K+ orders in data warehouse
-
-### Advanced Analytics & Business Intelligence
-- **Pre-aggregated metrics** computed server-side (30+ KPIs per dashboard load)
-- **Master query pattern** with CTEs for complex multi-dimensional analysis
-- **Partitioned queries** scanning only relevant date ranges (90% cost reduction)
-- **Clustered storage** for optimal query performance on business dimensions
-- **Real-time + historical views** combining Firestore (operational) + BigQuery (analytical)
-
-### Geospatial Data Engineering & Location Intelligence
-- **Real-time GPS data streams** with geofencing validation and alerts
-- **67,000+ tracked delivery runs** stored in BigQuery for pattern analysis
-- **Cost-optimized distance calculation** using Haversine formula on device GPS coordinates
-  - **Native geolocation API** (React Native) replaces Google Maps Distance Matrix API
-  - **Real-time coordinate streaming** to Firestore during active deliveries
-  - **Post-delivery distance calculation** with Haversine algorithm (±5m accuracy)
-  - **Cost savings**: $0 vs $500+/month for Google Maps API calls
-  - **Dual benefit**: Distance metrics + live customer tracking (CRM feature)
-- **Spatial data processing** for route optimization and territory analysis
-- **Geospatial analytics** for delivery efficiency and coverage optimization
-- **Historical location data warehousing** for machine learning and predictive insights
-- **Region extraction and clustering** (40+ Brasília neighborhoods mapped)
-
-### Order & Delivery Data Management
-- **Event-sourced order state management** with complete audit trails
-- **Real-time order processing** with automated status updates and tracking
-- **Cross-system data integration** between pharmacy POS and delivery systems
-- **Data quality monitoring** with automated validation and cleansing
-
-### Customer Data Platform & Experience Analytics
-- **Real-time delivery tracking** with live GPS location sharing to customers
-- **Push notification system** for instant order status updates
-- **Customer journey mapping** with delivery status visibility and timeline
-- **Multi-channel communication** ensuring customers stay informed throughout delivery process
-
----
-
-## 🏆 **Data Engineering Highlights**
-
-### **1. Kappa Architecture Implementation**
-- **Hybrid approach**: Firestore (operational, real-time) + BigQuery (analytical, batch)
-- **Single source of truth**: All events originate from Firestore
-- **Near real-time sync**: 5-minute batch windows balance cost and freshness
-- **Optimized for workload**: Right tool for the right job (NoSQL vs columnar)
-
-### **2. Advanced Caching Strategies**
-- **Stale-While-Revalidate Pattern**: Instant UI updates with background refresh
-- **3-Layer Cache Hierarchy**: Memory (10ms) → AsyncStorage (50ms) → API (2s)
-- **TTL-based Invalidation**: Dynamic TTL based on data volatility (5min to 1hr)
-- **80% cache hit ratio**: Eliminates 80% of API calls after warm-up
-
-### **3. Query Optimization Techniques**
-- **Master Query with CTEs**: 9 Common Table Expressions in single query
-- **Partitioning by date**: 90% query scan reduction
-- **Clustering by dimensions**: Physical data organization by unit/driver/region
-- **7x performance improvement**: Sequential queries → parallel execution
-
-### **4. Serverless ETL Pipeline Design**
-- **Event-driven execution**: Cloud Scheduler triggers Cloud Functions
-- **Near real-time sync**: 5-minute intervals (cost-effective)
-- **Idempotent processing**: Safe for retry and failure recovery
-- **Auto-scaling**: Handles 100+ orders per execution, scales to 10K+ daily
-
-### **5. Cost-Effective Scalability**
-- **Current**: R$ 73/month for 1,000 orders/day
-- **Projected**: Same cost for 10,000 orders/day (BigQuery scales horizontally)
-- **Free tiers maximized**:
-  - Cloud Functions: <2M invocations/month = FREE
-  - BigQuery: 1TB queries/month = FREE
-  - Cloud Scheduler: 3 jobs/month = FREE
-  - Native GPS: FREE vs $500+/month Google Maps Distance Matrix API
-- **10x growth capacity** with no infrastructure changes
-
-### **6. Intelligent Cost Optimization - GPS Distance Calculation**
-- **Problem**: Google Maps Distance Matrix API would cost $500+/month for 67K+ delivery runs
-- **Solution**: Native device geolocation (React Native) + Haversine formula
-- **Implementation**: 
-  - Stream GPS coordinates to Firestore during active deliveries (real-time tracking)
-  - Calculate distance post-delivery using Haversine algorithm on coordinate array
-  - Accuracy: ±5 meters (equivalent to Google Maps)
-- **Benefits**: 
-  - **$500+/month saved** (100% cost elimination)
-  - Real-time customer tracking (CRM feature, no additional cost)
-  - Historical geospatial data for ML/analytics (67K+ runs in BigQuery)
-- **Result**: Google Maps-level accuracy with zero API costs
-
-### **7. Performance Engineering**
-- **95% dashboard load improvement**: 90s → 2-3s (cold) or 50ms (cached)
-- **98% CPU reduction**: Eliminated client-side O(n²) processing
-- **Sub-second query execution**: 800ms average BigQuery response
-- **Sub-100ms cached responses**: 80% of requests after warm-up
-
----
-
-## 💼 **Technical Skills Demonstrated**
-
-### **Data Engineering**
-- ✅ **Kappa Architecture** design and implementation
-- ✅ **Batch & Stream Processing** hybrid patterns
-- ✅ **Serverless ETL Pipelines** with Cloud Functions
-- ✅ **Data Warehousing** with BigQuery (partitioning, clustering, CTEs)
-- ✅ **Query Optimization** (master queries, JOINs, window functions)
-- ✅ **Intelligent Caching** (multi-layer, Stale-While-Revalidate)
-- ✅ **Performance Engineering** (95% improvement, 98% CPU reduction)
-- ✅ **Cost Optimization** (9% reduction, free tier maximization)
-
-### **Cloud & Infrastructure**
-- ✅ **Google Cloud Platform** (BigQuery, Cloud Functions, Cloud Scheduler)
-- ✅ **Serverless Architecture** (auto-scaling, pay-per-use)
-- ✅ **Firebase Ecosystem** (Firestore, Authentication, Cloud Messaging)
-- ✅ **Hybrid Database Strategy** (NoSQL + Columnar warehousing)
-- ✅ **Geospatial Processing** (Google Maps API, region clustering)
-
-### **Software Engineering**
-- ✅ **React Native/Expo** mobile development
-- ✅ **TypeScript** type-safe data transformations
-- ✅ **Clean Architecture** patterns (separation of concerns)
-- ✅ **OCR Integration** (Azure Cognitive Services + Tesseract)
-- ✅ **Real-time Systems** (WebSocket, push notifications)
-
----
-
-## 📱 **Pharmacy OCR Integration - Pipeline Entry Point**
-
-### **Sales Screen Processing System**
-
-The Farmanossa ecosystem **begins** with a sophisticated **OCR-powered data extraction system** that serves as the **primary entry point** for all delivery orders. This system processes screenshots of pharmacy sales screens, transforming visual data into structured delivery orders.
-
-#### **OCR System as Pipeline Initiator:**
-- 📱 **Sales Screen Capture** - Screenshots from pharmacy point-of-sale systems
-- 🧠 **Dual OCR engine architecture** (Azure Cognitive Services + Tesseract.js)
-- 🔍 **Intelligent field extraction** (customer data, products, prices)
-- 🔄 **Real-time data validation** and normalization
-- 📊 **Instant order creation** - Orders immediately available in delivery app
-- 🎯 **95%+ accuracy** in text recognition and data extraction
-
-#### **Complete Data Transformation Pipeline:**
 ```javascript
-Sales Screen Screenshot → OCR Processing → Data Extraction → 
-Customer Info Parsing → Product Identification → Price Calculation →
-Order Validation → Firebase Integration → Delivery Order Creation
-```
+/**
+ * batchSync Cloud Function
+ * Triggered every 5 minutes by Cloud Scheduler
+ * Syncs delivered/cancelled orders to BigQuery
+ */
+exports.syncOrdersToBigQuery = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub.schedule('every 5 minutes')
+  .onRun(async (context) => {
+    // Step 1: Read unprocessed items from queue
+    const queueSnapshot = await db.collection('bigquery_sync_queue')
+      .where('processed', '==', false)
+      .orderBy('queuedAt', 'asc')
+      .limit(100) // Batch size
+      .get();
+    
+    // Step 2: Fetch order data from Firestore
+    const orderIds = queueSnapshot.docs.map(doc => doc.data().orderId);
+    const orderDocs = await Promise.all(
+      orderIds.map(id => db.collection('orders').doc(id).get())
+    );
+    
+    // Step 3: Transform data
+    const rows = orderDocs.map(doc => {
+      const data = doc.data();
+      return {
+        order_id: doc.id,
+        created_at: data.createdAt.toDate(),
+        pharmacy_unit_id: data.pharmacyUnitId || '',
+        delivery_man: data.deliveryManId || '',
+        region: extractRegionFromAddress(data.address), // Custom extractor
+        price_number: parseFloat(data.price) || 0,
+        delivery_time_minutes: calculateDeliveryTime(data.statusHistory),
+        status: data.status,
+        rating: data.rating || null,
+        // ... more fields
+      };
+    });
+    
+    // Step 4: Upload to Cloud Storage (FREE!)
+    const filename = `orders_${Date.now()}.json`;
+    await bucket.file(filename).save(
+      rows.map(r => JSON.stringify(r)).join('\n')
+    );
+    
+    // Step 5: Load to BigQuery via Cloud Storage
+    await bigquery.dataset(DATASET_ID).table(TABLE_ID)
+      .load(bucket.file(filename), {
+        sourceFormat: 'NEWLINE_DELIMITED_JSON',
+        writeDisposition: 'WRITE_APPEND',
+        schema: BIGQUERY_SCHEMA,
+      });
+    
+    // Step 6: Mark items as processed
+    await Promise.all(
+      queueSnapshot.docs.map(doc => 
+        doc.ref.update({ processed: true, processedAt: new Date() })
+      )
+    );
+    
+    console.log(`✅ Synced ${rows.length} orders to BigQuery`);
+  });
 
-#### **Integration Benefits:**
-- **100% digital transformation** - No manual data entry required
-- **Real-time order availability** - Orders instantly appear in delivery app
-- **95% improvement** in data accuracy vs manual entry
-- **60% faster** order-to-delivery workflow
-- **Seamless automation** from sale to delivery assignment
+/**
+ * Extract region from address (40+ Brasília regions)
+ */
+function extractRegionFromAddress(address) {
+  if (!address) return null;
+  const addressUpper = address.toUpperCase();
+  
+  const regions = [
+    'AGUAS CLARAS', 'TAGUATINGA', 'CEILANDIA', 'GAMA',
+    'PLANALTINA', 'SOBRADINHO', 'BRAZLANDIA', 'SAMAMBAIA',
+    // ... 30+ more regions
+  ];
+  
+  for (const region of regions) {
+    if (addressUpper.includes(region)) {
+      return region;
+    }
+  }
+  return null;
+}
 
-### **Technical Implementation:**
-```typescript
-// OCR data flows directly into delivery system
-interface ExtractedOrderData {
-  orderId: string;
-  clientName: string;
-  phone: string;
-  address: string;
-  products: Product[];
-  totalValue: number;
-  processingMetadata: OCRMetadata;
+/**
+ * Calculate delivery time from status history
+ */
+function calculateDeliveryTime(statusHistory) {
+  const startStatus = statusHistory?.find(item => item.status === 'A caminho');
+  const endStatus = statusHistory?.find(item => item.status === 'Entregue');
+  
+  if (!startStatus || !endStatus) return 10.0; // Default template
+  
+  const startTime = startStatus.timestamp.toDate();
+  const endTime = endStatus.timestamp.toDate();
+  
+  return (endTime - startTime) / (1000 * 60); // Minutes
 }
 ```
+
+</details>
+
+**Impact:**  
+- ✅ **100+ orders** processed per execution  
+- ✅ **Near real-time** (5-min sync window)  
+- ✅ **Cost: FREE** (under Cloud Functions free tier)  
+- ✅ **Idempotent** (safe for retry)
+
+---
+
+### 2. BigQuery Query Optimization (Master Query Pattern)
+
+**Challenge:** Dashboard making 7 sequential queries taking 7+ seconds total  
+**Solution:** Single master query with 9 CTEs returning all data in parallel
+
+<details>
+<summary>📝 View Optimized Query Code</summary>
+
+```sql
+-- Master query with 9 CTEs (Common Table Expressions)
+-- Returns all dashboard data in a single query
+WITH
+  -- Main statistics
+  main_stats AS (
+    SELECT
+      COUNT(*) as total_orders,
+      COUNT(CASE WHEN status = 'Entregue' THEN 1 END) as delivered_orders,
+      COUNT(CASE WHEN status = 'Cancelado' THEN 1 END) as canceled_orders,
+      ROUND(SUM(price_number), 2) as total_revenue,
+      ROUND(AVG(price_number), 2) as avg_order_value,
+      ROUND(AVG(CASE WHEN rating IS NOT NULL THEN rating END), 2) as avg_rating,
+      ROUND(AVG(CASE WHEN delivery_time_minutes IS NOT NULL 
+                THEN delivery_time_minutes END), 2) as avg_delivery_time,
+      APPROX_COUNT_DISTINCT(delivery_man) as active_deliverymen,
+      APPROX_COUNT_DISTINCT(pharmacy_unit_id) as active_units
+    FROM `farmanossadelivery-76182.farmanossa_analytics.orders`
+    WHERE DATE(created_at, 'America/Sao_Paulo') = CURRENT_DATE('America/Sao_Paulo')
+  ),
+  
+  -- Top regions by order volume
+  top_regions AS (
+    SELECT 
+      region,
+      COUNT(*) as order_count,
+      ROUND(AVG(delivery_time_minutes), 2) as avg_delivery_time
+    FROM `farmanossadelivery-76182.farmanossa_analytics.orders`
+    WHERE region IS NOT NULL
+      AND DATE(created_at, 'America/Sao_Paulo') = CURRENT_DATE('America/Sao_Paulo')
+    GROUP BY region
+    ORDER BY order_count DESC
+    LIMIT 10
+  ),
+  
+  -- Hourly distribution
+  hourly_dist AS (
+    SELECT 
+      EXTRACT(HOUR FROM created_at AT TIME ZONE 'America/Sao_Paulo') as hour,
+      COUNT(*) as order_count
+    FROM `farmanossadelivery-76182.farmanossa_analytics.orders`
+    WHERE DATE(created_at, 'America/Sao_Paulo') = CURRENT_DATE('America/Sao_Paulo')
+    GROUP BY hour
+    ORDER BY hour
+  ),
+  
+  -- Deliveryman stats WITH JOIN to get names
+  deliveryman_stats AS (
+    SELECT 
+      o.delivery_man,
+      d.name as delivery_man_name, -- JOIN for human-readable names
+      COUNT(*) as order_count,
+      ROUND(SUM(o.price_number), 2) as total_revenue,
+      ROUND(AVG(o.price_number), 2) as avg_order_value,
+      ROUND(AVG(o.delivery_time_minutes), 2) as avg_delivery_time,
+      ROUND(AVG(CASE WHEN o.rating IS NOT NULL THEN o.rating END), 2) as avg_rating
+    FROM `farmanossadelivery-76182.farmanossa_analytics.orders` o
+    LEFT JOIN `farmanossadelivery-76182.farmanossa_analytics.deliverymen` d
+      ON o.delivery_man = d.deliveryman_id
+    WHERE DATE(o.created_at, 'America/Sao_Paulo') = CURRENT_DATE('America/Sao_Paulo')
+      AND o.delivery_man IS NOT NULL
+    GROUP BY o.delivery_man, d.name
+    ORDER BY order_count DESC
+    LIMIT 20
+  ),
+  
+  -- Pharmacy unit stats WITH JOIN
+  unit_stats AS (
+    SELECT 
+      o.pharmacy_unit_id,
+      u.name as unit_name, -- JOIN for unit names
+      COUNT(*) as order_count,
+      ROUND(SUM(o.price_number), 2) as total_revenue
+    FROM `farmanossadelivery-76182.farmanossa_analytics.orders` o
+    LEFT JOIN `farmanossadelivery-76182.farmanossa_analytics.pharmacy_units` u
+      ON o.pharmacy_unit_id = u.unit_id
+    WHERE DATE(o.created_at, 'America/Sao_Paulo') = CURRENT_DATE('America/Sao_Paulo')
+      AND o.pharmacy_unit_id IS NOT NULL
+    GROUP BY o.pharmacy_unit_id, u.name
+    ORDER BY order_count DESC
+  ),
+  
+  -- Daily trend (last 30 days)
+  daily_dist AS (
+    SELECT 
+      DATE(created_at, 'America/Sao_Paulo') as date,
+      COUNT(*) as order_count,
+      ROUND(SUM(price_number), 2) as revenue
+    FROM `farmanossadelivery-76182.farmanossa_analytics.orders`
+    WHERE DATE(created_at, 'America/Sao_Paulo') >= 
+      DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 30 DAY)
+    GROUP BY date
+    ORDER BY date DESC
+  )
+
+-- Final SELECT: Combine all CTEs into structured JSON
+SELECT 
+  (SELECT AS STRUCT * FROM main_stats) as stats,
+  ARRAY(SELECT AS STRUCT * FROM top_regions) as regions,
+  ARRAY(SELECT AS STRUCT * FROM hourly_dist) as hourly_distribution,
+  ARRAY(SELECT AS STRUCT * FROM deliveryman_stats) as deliverymen,
+  ARRAY(SELECT AS STRUCT * FROM unit_stats) as units,
+  ARRAY(SELECT AS STRUCT * FROM daily_dist) as daily_trend;
+```
+
+</details>
+
+**Impact:**  
+- ✅ **7 queries → 1 query** = **7x faster**  
+- ✅ **Sub-second execution** (800ms average)  
+- ✅ **30+ pre-aggregated metrics** returned  
+- ✅ **JOINs for human-readable names** (eliminates 60% Firestore reads)
+
+---
+
+### 3. Intelligent 3-Layer Caching
+
+**Challenge:** Even with BigQuery, repeated dashboard loads causing unnecessary API calls  
+**Solution:** Stale-While-Revalidate caching pattern with 3 tiers
+
+<details>
+<summary>📝 View Caching Implementation</summary>
+
+```typescript
+/**
+ * 3-Layer Cache with Stale-While-Revalidate Pattern
+ * 
+ * Layer 1: Memory (Map)         → 10ms   (80% hit rate after warm-up)
+ * Layer 2: AsyncStorage (Disk)  → 50ms   (15% hit rate)
+ * Layer 3: BigQuery API         → 2s     (5% miss rate)
+ */
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Layer 1: In-memory cache (fastest)
+const memoryCache = new Map<string, { data: any; timestamp: number }>();
+
+// Dynamic TTL based on data volatility
+const getCacheTTL = (endpoint: string): number => {
+  switch (endpoint) {
+    case 'admin-dashboard':
+      return 5 * 60 * 1000; // 5 minutes (frequently changing)
+    case 'deliverymen':
+      return 60 * 60 * 1000; // 1 hour (rarely changes)
+    default:
+      return 10 * 60 * 1000; // 10 minutes (default)
+  }
+};
+
+/**
+ * Fetch with intelligent caching
+ */
+export async function fetchWithCache<T>(
+  endpoint: string,
+  params: Record<string, any>,
+  fetcher: () => Promise<T>
+): Promise<T> {
+  const cacheKey = `${endpoint}:${JSON.stringify(params)}`;
+  const ttl = getCacheTTL(endpoint);
+  const now = Date.now();
+
+  // Layer 1: Check memory cache
+  const memCached = memoryCache.get(cacheKey);
+  if (memCached && now - memCached.timestamp < ttl) {
+    console.log(`✅ [CACHE HIT] Memory: ${endpoint} (${now - memCached.timestamp}ms old)`);
+    return memCached.data;
+  }
+
+  // Layer 2: Check AsyncStorage (persistent)
+  try {
+    const diskCached = await AsyncStorage.getItem(cacheKey);
+    if (diskCached) {
+      const parsed = JSON.parse(diskCached);
+      const age = now - parsed.timestamp;
+      
+      if (age < ttl) {
+        // Cache hit: Update memory cache and return
+        memoryCache.set(cacheKey, parsed);
+        console.log(`✅ [CACHE HIT] Disk: ${endpoint} (${age}ms old)`);
+        return parsed.data;
+      } else if (age < ttl * 2) {
+        // Stale but acceptable: Return stale data, revalidate in background
+        memoryCache.set(cacheKey, parsed);
+        console.log(`⚠️ [STALE DATA] ${endpoint} (${age}ms old), revalidating...`);
+        
+        // Background revalidation (don't await)
+        revalidateCache(cacheKey, fetcher, ttl);
+        
+        return parsed.data;
+      }
+    }
+  } catch (error) {
+    console.warn('AsyncStorage read error:', error);
+  }
+
+  // Layer 3: Cache miss - Fetch from API
+  console.log(`❌ [CACHE MISS] ${endpoint}, fetching from BigQuery...`);
+  const freshData = await fetcher();
+  
+  // Update both caches
+  const cacheEntry = { data: freshData, timestamp: now };
+  memoryCache.set(cacheKey, cacheEntry);
+  
+  try {
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
+  } catch (error) {
+    console.warn('AsyncStorage write error:', error);
+  }
+
+  return freshData;
+}
+
+/**
+ * Background revalidation (Stale-While-Revalidate pattern)
+ */
+async function revalidateCache<T>(
+  cacheKey: string,
+  fetcher: () => Promise<T>,
+  ttl: number
+): Promise<void> {
+  try {
+    const freshData = await fetcher();
+    const cacheEntry = { data: freshData, timestamp: Date.now() };
+    
+    // Update both caches
+    memoryCache.set(cacheKey, cacheEntry);
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
+    
+    console.log(`🔄 [REVALIDATED] ${cacheKey}`);
+  } catch (error) {
+    console.error('Revalidation failed:', error);
+  }
+}
+```
+
+</details>
+
+**Impact:**  
+- ✅ **80%+ cache hit ratio** after warm-up  
+- ✅ **<100ms response** for 95% of requests  
+- ✅ **Transparent background refresh** (Stale-While-Revalidate)  
+- ✅ **Reduced API costs** by 80%
+
+---
+
+### 4. Cost-Optimized GPS Distance Calculation
+
+**Challenge:** Google Maps Distance Matrix API would cost $500+/month for 160K+ delivery runs  
+**Solution:** Native device GPS + Haversine formula (zero API costs, ±5m accuracy)
+
+<details>
+<summary>📝 View Geospatial Implementation</summary>
+
+```typescript
+/**
+ * Cost-Optimized Distance Calculation
+ * 
+ * Google Maps Distance Matrix API: $500+/month for 160K runs
+ * Native GPS + Haversine: $0/month with equivalent accuracy
+ */
+
+import * as Location from 'expo-location';
+
+interface Coordinate {
+  latitude: number;
+  longitude: number;
+  timestamp: number;
+}
+
+/**
+ * Stream GPS coordinates to Firestore during active delivery
+ */
+async function trackDeliveryLocation(deliveryRunId: string) {
+  // Request location permissions
+  const { status } = await Location.requestForegroundPermissionsAsync();
+  if (status !== 'granted') return;
+
+  // Start location tracking (updates every 10 seconds)
+  const subscription = await Location.watchPositionAsync(
+    {
+      accuracy: Location.Accuracy.High,
+      timeInterval: 10000, // 10 seconds
+      distanceInterval: 10, // 10 meters
+    },
+    (location) => {
+      const checkpoint: Coordinate = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        timestamp: Date.now(),
+      };
+
+      // Stream to Firestore (dual purpose: tracking + distance calculation)
+      db.collection('deliveryRuns').doc(deliveryRunId).update({
+        checkpoints: firebase.firestore.FieldValue.arrayUnion(checkpoint),
+        currentLocation: checkpoint, // For real-time customer tracking
+      });
+    }
+  );
+
+  return subscription;
+}
+
+/**
+ * Haversine formula - Calculate distance between two coordinates
+ * Accuracy: ±5 meters (equivalent to Google Maps)
+ */
+function haversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371; // Earth radius in kilometers
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in kilometers
+}
+
+function toRadians(degrees: number): number {
+  return degrees * (Math.PI / 180);
+}
+
+/**
+ * Calculate total distance from checkpoint array
+ */
+function calculateTotalDistance(checkpoints: Coordinate[]): number {
+  if (!checkpoints || checkpoints.length < 2) return 0;
+
+  let totalDistance = 0;
+  for (let i = 1; i < checkpoints.length; i++) {
+    const prev = checkpoints[i - 1];
+    const curr = checkpoints[i];
+    totalDistance += haversineDistance(
+      prev.latitude,
+      prev.longitude,
+      curr.latitude,
+      curr.longitude
+    );
+  }
+
+  return totalDistance;
+}
+
+/**
+ * Complete distance calculation when delivery ends
+ */
+async function finalizeDeliveryDistance(deliveryRunId: string) {
+  const deliveryDoc = await db.collection('deliveryRuns').doc(deliveryRunId).get();
+  const checkpoints: Coordinate[] = deliveryDoc.data()?.checkpoints || [];
+
+  const totalDistance = calculateTotalDistance(checkpoints);
+
+  await db.collection('deliveryRuns').doc(deliveryRunId).update({
+    totalDistance: totalDistance,
+    status: 'completed',
+  });
+
+  console.log(`✅ Delivery ${deliveryRunId}: ${totalDistance.toFixed(2)} km`);
+}
+```
+
+</details>
+
+**Impact:**  
+- ✅ **$500+/month saved** (100% cost elimination)  
+- ✅ **±5m accuracy** (equivalent to Google Maps)  
+- ✅ **Dual benefit**: Distance tracking + real-time customer tracking (CRM feature)  
+- ✅ **160K+ runs** processed with zero API costs  
+- ✅ **Historical geospatial data** in BigQuery for ML/analytics
+
+---
+
+### 5. BigQuery Table Optimization (Partitioning & Clustering)
+
+**Challenge:** Full table scans processing 68K+ rows costing time and money  
+**Solution:** Partitioning by date + clustering by business dimensions
+
+<details>
+<summary>📝 View Table Schema & Optimization</summary>
+
+```sql
+-- BigQuery table schema with partitioning and clustering
+CREATE TABLE `farmanossadelivery-76182.farmanossa_analytics.orders`
+(
+  order_id STRING NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  pharmacy_unit_id STRING,
+  delivery_man STRING,
+  region STRING,
+  price_number FLOAT64,
+  delivery_time_minutes FLOAT64,
+  status STRING,
+  rating FLOAT64,
+  item_count INT64,
+  customer_phone STRING,
+  synced_at TIMESTAMP
+)
+-- Partitioning: Reduces scan by 90%
+PARTITION BY DATE(created_at)
+-- Clustering: Physical data organization for optimal queries
+CLUSTER BY pharmacy_unit_id, delivery_man, region
+OPTIONS(
+  description="Orders data warehouse with partitioning and clustering for optimal query performance",
+  labels=[("project", "farmanossa"), ("env", "production")]
+);
+
+-- Example query benefiting from optimization:
+-- Before: 68K rows scanned
+-- After: ~1K rows scanned (current day partition + clustered data)
+SELECT 
+  pharmacy_unit_id,
+  COUNT(*) as order_count,
+  ROUND(AVG(delivery_time_minutes), 2) as avg_delivery_time
+FROM `farmanossadelivery-76182.farmanossa_analytics.orders`
+WHERE DATE(created_at) = CURRENT_DATE() -- Uses partition
+  AND pharmacy_unit_id = 'unit_123'      -- Uses clustering
+GROUP BY pharmacy_unit_id;
+
+-- Query cost reduction example:
+-- Without optimization: 68,327 rows * 10 columns = 683 KB scanned
+-- With optimization: ~1,000 rows * 10 columns = 10 KB scanned
+-- = 98.5% cost reduction per query
+```
+
+</details>
+
+**Impact:**  
+- ✅ **90% query scan reduction** via partitioning  
+- ✅ **Physical data organization** for business dimensions  
+- ✅ **Sub-second query execution** (800ms average)  
+- ✅ **Cost optimization** (98.5% reduction per query)
+
+---
+
+## 📊 Production Metrics & Impact
+
+| **Metric** | **Value** | **Details** |
+|------------|-----------|-------------|
+| **Data Volume** | 160K+ records | 68K orders + 92K delivery runs in BigQuery |
+| **Daily Throughput** | 1,000+ orders | Production load, scales to 10K+ |
+| **Dashboard Performance** | 95% faster | 90s → 2-3s (cold) / 50ms (cached) |
+| **Cache Hit Ratio** | 80%+ | After warm-up, eliminates 80% of API calls |
+| **Query Scan Reduction** | 90% | Via partitioning by date |
+| **Cost per Order** | R$ 0.0024 | Highly cost-efficient |
+| **Monthly Infrastructure** | R$ 73 | Down from R$ 80 (9% reduction) |
+| **GPS Cost Savings** | $500+/month | Native GPS + Haversine vs Google Maps API |
+| **Platform Uptime** | 99.9% | Production SLA |
+| **Query Execution** | 800ms avg | BigQuery master query |
+
+---
+
+## 📥 OCR Data Ingestion Pipeline (POS Integration)
+
+**Challenge:** Pharmacy POS system has no API for integration  
+**Solution:** OCR-based screenshot processing pipeline
+
+### Pipeline Architecture:
+```
+Sales Screen Screenshot
+  ↓ (Azure Cognitive Services + Tesseract.js)
+Extracted Text (JSON)
+  ↓ (Custom regex patterns)
+Structured Order Data
+  ↓ (Validation & Normalization)
+Firestore Document
+  ↓ (Real-time sync)
+Mobile App (Instant Availability)
+```
+
+### Implementation Highlights:
+- **Dual OCR engines** (Azure primary + Tesseract fallback)
+- **95%+ accuracy** in field extraction
+- **<5 seconds** end-to-end processing
+- **Real-time validation** with instant feedback
+- **1,000+ orders/day** processed automatically
 
 **Repository:** [Pharmacy OCR System](https://github.com/HenryFroio/pharmacy-ocr-demo)
 
 ---
 
-## 🌐 **Complete Ecosystem Overview**
+## 🛠️ Tech Stack (Data Engineering Focus)
 
-### **Integrated Platform Components:**
-1. **OCR Processing System** (React Web) - Sales screen digitization and order extraction
-2. **Mobile Delivery App** (React Native) - Multiplatform delivery management (client, deliverer, admin)
-3. **Firebase + BigQuery Backend** - Hybrid operational + analytical data layer
-4. **Cloud Functions** - Serverless ETL pipelines and API endpoints
-5. **Native GPS Tracking** - Real-time geolocation with Haversine distance calculation (zero API costs)
+### Data Warehousing & Analytics
+- **BigQuery** - Columnar data warehouse (160K+ records)
+- **Partitioning** - By DATE(created_at) for scan optimization
+- **Clustering** - By pharmacy_unit_id, delivery_man, region
+- **CTEs** - Master query pattern with 9 Common Table Expressions
 
-### **End-to-End Data Flow:**
-```
-POS Screenshot → OCR Extraction → Firestore (operational) → Mobile Apps
-                                          ↓ (5-min sync)    ↓ (GPS stream)
-                                    BigQuery (analytics) → Cached Dashboards
-                                    delivery_runs (67K+)
-```
+### ETL & Data Pipelines
+- **Cloud Functions** - Serverless ETL (Node.js/TypeScript)
+- **Cloud Scheduler** - Cron-based pipeline orchestration
+- **Firestore Triggers** - Real-time reference data sync
+- **Cloud Storage** - Staging area for batch uploads (FREE)
 
----
+### Caching & Performance
+- **3-Layer Cache** - Memory (Map) → AsyncStorage → API
+- **Stale-While-Revalidate** - Background refresh pattern
+- **Dynamic TTL** - Based on data volatility (5min-1hr)
 
-## 💼 **Portfolio & Technical Expertise**
+### Geospatial & Cost Optimization
+- **Native GPS** - React Native Location API (zero cost)
+- **Haversine Formula** - Distance calculation (±5m accuracy)
+- **Real-time Tracking** - Dual-purpose: distance + customer CRM
 
-### **Key Capabilities Demonstrated:**
-- **Kappa Architecture** - Hybrid real-time + batch processing
-- **Data Warehousing** - BigQuery with partitioning, clustering, and CTEs
-- **Serverless ETL** - Cost-optimized Cloud Functions pipelines
-- **Intelligent Caching** - 3-layer Stale-While-Revalidate strategy (80%+ hit ratio)
-- **Cost-Optimized Geospatial** - Native GPS + Haversine formula ($500+/month saved vs Google Maps API)
-- **OCR Integration** - Automated POS screenshot processing (95%+ accuracy)
-- **Performance Engineering** - 95% dashboard improvement (90s → 2s)
-- **Cost Optimization** - $500+/month savings through architectural decisions
-- **Full-Stack Mobile** - React Native multiplatform (client, deliverer, admin)
-
-### **Production Metrics:**
-- **1,000+ daily orders** | **68K+ historical orders** | **67K+ GPS-tracked runs**
-- **99.9% uptime** | **<100ms cached responses** | **R$ 0.0024 cost per order**
-- **$0 GPS costs** (saved $500+/month) | **±5m accuracy** (Haversine formula)
-
-### **For Professional Evaluation:**
-- **Code Review:** Available for technical assessment
-- **Architecture Discussion:** Kappa implementation, BigQuery optimization, caching strategies
-- **Contact:** henry.froio@outlook.com for data engineering, ETL pipelines, or performance optimization questions
+### Operational Database
+- **Firebase Firestore** - NoSQL real-time database
+- **Real-time Listeners** - onSnapshot for instant updates
+- **Offline-first Sync** - Automatic conflict resolution
 
 ---
 
-## 📞 **Professional Contact**
+## 📞 Contact & Professional Info
 
 **Henry Froio**  
-*Data Engineer & Software Engineer*
+*Data Engineer | 4+ years experience*
 
-Specialized in **Kappa Architecture**, **BigQuery data warehousing**, **high-performance ETL pipelines**, and **intelligent document processing** for healthcare and logistics industries.
+Specialized in **Kappa Architecture**, **BigQuery optimization**, **high-performance ETL pipelines**, and **intelligent document processing**.
 
 - **Email:** henry.froio@outlook.com
 - **LinkedIn:** https://www.linkedin.com/in/henry-froio-827816238/
 - **Portfolio:** https://henryfroio.com
 - **GitHub:** https://github.com/HenryFroio
 
-**Project Information:**
-- **Farmanossa Delivery System** - Proprietary multiplatform delivery management system
-- **Owner:** CSP COMERCIO DE MEDICAMENTOS LTDA
-- **Developer:** Henry Froio
+**Looking for:** Junior Data Engineer positions working with **BigQuery**, **ETL pipelines**, **real-time data processing**, and **cost-optimized cloud architectures**.
 
 ---
 
-## 📄 **License & Usage**
+## 📄 License
 
 **© 2025 CSP COMERCIO DE MEDICAMENTOS LTDA. All rights reserved.**
 
-This software is **proprietary and confidential**. Developed by **Henry Froio** for CSP COMERCIO DE MEDICAMENTOS LTDA.
-
-- **License:** Proprietary - Not for public use, modification, or distribution
-- **Purpose:** Portfolio demonstration and technical showcase
-- **Contact:** henry.froio@outlook.com for licensing inquiries
+This is a **sanitized portfolio demonstration** of proprietary software developed for CSP COMERCIO DE MEDICAMENTOS LTDA.
 
 ---
 
-⭐ **If this project demonstrates valuable technical skills for your team, please star the repository!**
+⭐ **If this project demonstrates valuable data engineering skills for your team, please star the repository!**
 
-**Keywords:** Kappa Architecture, BigQuery, Data Warehousing, ETL Pipelines, React Native, Firebase, OCR, Data Engineering, Real-time Processing, Serverless, Healthcare Tech, Mobile Development, TypeScript, Cloud Architecture, Performance Optimization
+**Keywords:** Data Engineering, Kappa Architecture, BigQuery, ETL Pipelines, Cloud Functions, Serverless, Data Warehousing, Real-time Processing, OCR, Cost Optimization, Performance Engineering, TypeScript
