@@ -1,9 +1,8 @@
-# Farmanossa: Multiplatform Pharmacy Delivery Management System - DEMO
+# Farmanossa: Pharmacy Delivery Management System - DEMO
 
 > **⚠️ DATA ENGINEERING PORTFOLIO PROJECT**  
-> This is a sanitized version of a production delivery management system developed for CSP COMERCIO DE MEDICAMENTOS LTDA.  
-> Demonstrates a **multiplatform delivery management system** with **Kappa Architecture**, **real-time + batch processing**, **data warehousing**, and **intelligent caching** for pharmacy logistics.  
-> **PURPOSE:** Showcase Data Engineering skills including ETL/ELT, real-time streaming, data warehousing with BigQuery, and cloud-native architecture
+> Sanitized version of a production system developed for CSP COMERCIO DE MEDICAMENTOS LTDA.  
+> **Showcases:** Kappa Architecture • BigQuery Data Warehouse • Serverless ETL • Real-time + Batch Processing • Cost Optimization ($573+/year saved)
 
 [![Kappa Architecture](https://img.shields.io/badge/Kappa-Architecture-purple.svg)](https://www.oreilly.com/radar/questioning-the-lambda-architecture/)
 [![BigQuery](https://img.shields.io/badge/BigQuery-Data_Warehouse-blue.svg)](https://cloud.google.com/bigquery)
@@ -12,9 +11,7 @@
 [![95% Faster](https://img.shields.io/badge/Performance-95%25_Faster-red.svg)](https://github.com)
 [![Cost Optimized](https://img.shields.io/badge/Cost-9%25_Reduced-orange.svg)](https://github.com)
 
-> **Production-scale delivery management platform** demonstrating **Kappa Architecture** with **real-time + batch processing**, **BigQuery data warehousing**, **intelligent caching**, and **serverless ETL pipelines** for pharmacy delivery optimization at scale
-
-A comprehensive **data engineering solution** showcasing **hybrid data architecture**, **automated ETL pipelines**, **pre-aggregated analytics**, **3-layer caching system**, and **event-driven data processing** for pharmacy delivery logistics optimization.
+**Production-scale platform** processing **1,000+ daily orders** with **sub-second latency** (Firestore) + **scalable analytics** (BigQuery). Features **intelligent 3-layer caching** (80%+ hit ratio), **GPS cost optimization** ($500+/month saved), and **95% dashboard performance improvement** (90s → 2-3s).
 
 ---
 
