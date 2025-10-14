@@ -3,9 +3,9 @@
 > **Production data engineering system** managing **1,000+ daily orders** with **Kappa Architecture** (Firestore + BigQuery), processing **68K+ orders** and **160K+ delivery runs** with **sub-second latency** and intelligent analytics.
 
 [![Kappa Architecture](https://img.shields.io/badge/Kappa-Architecture-purple.svg)](https://www.oreilly.com/radar/questioning-the-lambda-architecture/)
-[![BigQuery](https://img.shields.io/badge/BigQuery-160K_Records-blue.svg)](https://cloud.google.com/bigquery)
+[![BigQuery](https://img.shields.io/badge/BigQuery-160K+_Records_Processed-blue.svg)](https://cloud.google.com/bigquery)
 [![95% Faster](https://img.shields.io/badge/Performance-95%25_Faster-red.svg)](https://github.com)
-[![Cost](https://img.shields.io/badge/Cost-$573+/yr_Saved-orange.svg)](https://github.com)
+[![Cost](https://img.shields.io/badge/Cost-$6,000+/yr_Saved-orange.svg)](https://github.com)
 
 ---
 
@@ -15,8 +15,27 @@
 - ✅ Built **serverless ETL pipelines** processing 1,000+ orders/day via Cloud Functions
 - ✅ Optimized BigQuery queries with **partitioning/clustering** (90% scan reduction)
 - ✅ Developed **3-layer caching system** achieving 80%+ hit ratio and 95% performance improvement
-- ✅ Reduced costs by **$573+/year** through architectural optimizations
+- ✅ Reduced costs by **$6,000+/year** through architectural optimizations
 - ✅ Implemented **OCR data ingestion pipeline** solving missing POS API integration
+
+---
+
+## 🛠️ Core Data Engineering Competencies
+
+**Data Warehousing & Analytics**  
+BigQuery • Partitioning • Clustering • Columnar Storage • Query Optimization
+
+**ETL & Data Pipelines**  
+Cloud Functions • Serverless Architecture • Event-Driven Processing • Batch & Stream Processing
+
+**Performance Engineering**  
+Caching Strategies • Query Optimization • Cost Engineering • Scalability
+
+**Data Integration**  
+OCR Pipelines • API Integration • Schema Design • Data Validation
+
+**Languages & Tools**  
+SQL • TypeScript/JavaScript • Python • Git • GCP
 
 ---
 
@@ -60,6 +79,18 @@
 ```
 
 **Why Kappa?** Simpler than Lambda (no dual codebase), single source of truth, cost-effective.
+
+---
+
+## 🧩 Technical Challenges Solved
+
+| **Challenge** | **Solution** | **Business Impact** |
+|---------------|--------------|---------------------|
+| Dashboard loading 90+ seconds | BigQuery + 3-layer caching system | 95% performance improvement |
+| No POS system API available | Custom OCR extraction pipeline | 100% automation, zero manual entry |
+| $500+/month GPS API costs | Native device GPS + Haversine algorithm | $500/mo saved ($6,000+/year) |
+| 7 sequential database queries | Single master query with CTEs | 7x faster, sub-second response |
+| Client-side data bottleneck | Server-side pre-aggregation | 98% CPU reduction |
 
 ---
 
@@ -565,7 +596,7 @@ async function finalizeDeliveryDistance(deliveryRunId: string) {
 </details>
 
 **Impact:**  
-- ✅ **$500+/month saved** (100% cost elimination)  
+- ✅ **$500+/month saved** ($6,000+/year cost elimination)  
 - ✅ **±5m accuracy** (equivalent to Google Maps)  
 - ✅ **Dual benefit**: Distance tracking + real-time customer tracking (CRM feature)  
 - ✅ **160K+ runs** processed with zero API costs  
@@ -646,7 +677,7 @@ GROUP BY pharmacy_unit_id;
 | **Query Scan Reduction** | 90% | Via partitioning by date |
 | **Cost per Order** | R$ 0.0024 | Highly cost-efficient |
 | **Monthly Infrastructure** | R$ 73 | Down from R$ 80 (9% reduction) |
-| **GPS Cost Savings** | $500+/month | Native GPS + Haversine vs Google Maps API |
+| **GPS Cost Savings** | $6,000+/year | $500+/month saved via native GPS + Haversine |
 | **Platform Uptime** | 99.9% | Production SLA |
 | **Query Execution** | 800ms avg | BigQuery master query |
 
@@ -724,7 +755,20 @@ Specialized in **Kappa Architecture**, **BigQuery optimization**, **high-perform
 - **Portfolio:** https://henryfroio.com
 - **GitHub:** https://github.com/HenryFroio
 
-**Looking for:** Junior Data Engineer positions working with **BigQuery**, **ETL pipelines**, **real-time data processing**, and **cost-optimized cloud architectures**.
+---
+
+## 💼 Open to Opportunities
+
+Seeking **Data Engineering** roles where I can apply my experience in:
+
+✅ Building and optimizing **data pipelines** at scale  
+✅ **Cost-conscious architecture** (saved $6,000+/year in production)  
+✅ **Performance engineering** (95% improvement in real systems)  
+✅ **Problem-solving** (built OCR solution when APIs weren't available)
+
+Experienced with modern data stacks: GCP (BigQuery, Cloud Functions), SQL/NoSQL databases, Python, TypeScript.
+
+📧 **henry.froio@outlook.com** | 💼 [LinkedIn](https://linkedin.com/in/henry-froio-827816238/)
 
 ---
 
