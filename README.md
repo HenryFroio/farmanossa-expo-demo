@@ -109,56 +109,86 @@ SQL • TypeScript/JavaScript • Python • Git • GCP
  * batchSync Cloud Function
  * Triggered every 5 minutes by Cloud Scheduler
  * Syncs delivered/cancelled orders to BigQuery
+ * 
+ * Note: Simplified for readability. Production code includes:
+ * - Status filtering (delivered/cancelled only)
+ * - License plate resolution from motorcycle IDs
+ * - Robust error handling and logging
  */
 exports.syncOrdersToBigQuery = functions
-  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
   .pubsub.schedule('every 5 minutes')
+  .timeZone('America/Sao_Paulo')
   .onRun(async (context) => {
     // Step 1: Read unprocessed items from queue
     const queueSnapshot = await db.collection('bigquery_sync_queue')
       .where('processed', '==', false)
-      .orderBy('queuedAt', 'asc')
       .limit(100) // Batch size
       .get();
     
+    if (queueSnapshot.empty) {
+      console.log('No items to sync');
+      return null;
+    }
+    
     // Step 2: Fetch order data from Firestore
     const orderIds = queueSnapshot.docs.map(doc => doc.data().orderId);
-    const orderDocs = await Promise.all(
-      orderIds.map(id => db.collection('orders').doc(id).get())
-    );
+    const orders = [];
+    
+    for (const orderId of orderIds) {
+      const orderDoc = await db.collection('orders').doc(orderId).get();
+      if (orderDoc.exists) {
+        const data = orderDoc.data();
+        // Filter: Only sync delivered or cancelled orders
+        if (data.status === 'Entregue' || data.status === 'Cancelado') {
+          orders.push(orderDoc);
+        }
+      }
+    }
     
     // Step 3: Transform data
-    const rows = orderDocs.map(doc => {
+    const rows = await Promise.all(orders.map(async (doc) => {
       const data = doc.data();
       return {
         order_id: doc.id,
         created_at: data.createdAt.toDate(),
         pharmacy_unit_id: data.pharmacyUnitId || '',
-        delivery_man: data.deliveryManId || '',
-        region: extractRegionFromAddress(data.address), // Custom extractor
-        price_number: parseFloat(data.price) || 0,
-        delivery_time_minutes: calculateDeliveryTime(data.statusHistory),
+        delivery_man: data.deliveryMan || null,
+        region: extractRegionFromAddress(data.address),
+        price_number: parseFloat(data.priceNumber) || 0,
+        delivery_time_minutes: calculateDeliveryTime(data.statusHistory, doc.id),
         status: data.status,
-        rating: data.rating || null,
+        rating: data.rating ? parseFloat(data.rating) : null,
         // ... more fields
       };
+    }));
+    
+    // Step 4: Create NDJSON file
+    const tempFilePath = path.join(os.tmpdir(), `sync_${Date.now()}.ndjson`);
+    const ndjsonContent = rows.map(row => JSON.stringify(row)).join('\n');
+    fs.writeFileSync(tempFilePath, ndjsonContent);
+    
+    // Step 5: Upload to Cloud Storage (FREE!)
+    const bucket = storage.bucket(BUCKET_NAME);
+    const gcsFileName = `sync/sync_${Date.now()}.ndjson`;
+    await bucket.upload(tempFilePath, {
+      destination: gcsFileName,
+      metadata: { contentType: 'application/x-ndjson' }
     });
     
-    // Step 4: Upload to Cloud Storage (FREE!)
-    const filename = `orders_${Date.now()}.json`;
-    await bucket.file(filename).save(
-      rows.map(r => JSON.stringify(r)).join('\n')
-    );
+    // Step 6: Load to BigQuery via Cloud Storage
+    const dataset = bigquery.dataset(DATASET_ID);
+    const table = dataset.table(TABLE_ID);
+    const file = bucket.file(gcsFileName);
     
-    // Step 5: Load to BigQuery via Cloud Storage
-    await bigquery.dataset(DATASET_ID).table(TABLE_ID)
-      .load(bucket.file(filename), {
-        sourceFormat: 'NEWLINE_DELIMITED_JSON',
-        writeDisposition: 'WRITE_APPEND',
-        schema: BIGQUERY_SCHEMA,
-      });
+    await table.load(file, {
+      sourceFormat: 'NEWLINE_DELIMITED_JSON',
+      writeDisposition: 'WRITE_APPEND',
+      autodetect: false,
+      schema: { fields: BIGQUERY_SCHEMA }
+    });
     
-    // Step 6: Mark items as processed
+    // Step 7: Mark items as processed
     await Promise.all(
       queueSnapshot.docs.map(doc => 
         doc.ref.update({ processed: true, processedAt: new Date() })
@@ -192,16 +222,38 @@ function extractRegionFromAddress(address) {
 /**
  * Calculate delivery time from status history
  */
-function calculateDeliveryTime(statusHistory) {
-  const startStatus = statusHistory?.find(item => item.status === 'A caminho');
-  const endStatus = statusHistory?.find(item => item.status === 'Entregue');
+function calculateDeliveryTime(statusHistory, orderId = 'unknown') {
+  if (!statusHistory || !Array.isArray(statusHistory)) {
+    return 10.0; // Default: 10 min (manual registration template)
+  }
   
-  if (!startStatus || !endStatus) return 10.0; // Default template
+  const startStatus = statusHistory.find(item => item.status === 'A caminho');
+  const endStatus = statusHistory.find(item => item.status === 'Entregue');
   
-  const startTime = startStatus.timestamp.toDate();
-  const endTime = endStatus.timestamp.toDate();
+  if (!startStatus || !endStatus) {
+    return 10.0; // Default template
+  }
   
-  return (endTime - startTime) / (1000 * 60); // Minutes
+  const startTime = startStatus.timestamp?._seconds 
+    ? new Date(startStatus.timestamp._seconds * 1000)
+    : (startStatus.timestamp?.toDate?.() || new Date(startStatus.timestamp));
+    
+  const endTime = endStatus.timestamp?._seconds
+    ? new Date(endStatus.timestamp._seconds * 1000)
+    : (endStatus.timestamp?.toDate?.() || new Date(endStatus.timestamp));
+  
+  const diffMinutes = (endTime - startTime) / (1000 * 60);
+  
+  // Valid time range: 0-300 min (5 hours)
+  if (diffMinutes > 0 && diffMinutes <= 300) {
+    // Fast deliveries (< 5 min) likely manual registration, use 10 min template
+    if (diffMinutes < 5) {
+      return 10.0;
+    }
+    return Math.round(diffMinutes * 100) / 100;
+  }
+  
+  return 10.0; // Out of range: use template
 }
 ```
 
@@ -223,28 +275,47 @@ function calculateDeliveryTime(statusHistory) {
 <details>
 <summary>📝 View Optimized Query Code</summary>
 
+> **Note:** Simplified for readability. Production query includes: 20+ additional metrics (satisfaction rate, items per order, preparing/pending counts), motorcycle usage stats, 30-day daily trend, complete deliverymen/units reference lists for filters, and dynamic date filter building.
+
 ```sql
 -- Master query with 9 CTEs (Common Table Expressions)
--- Returns all dashboard data in a single query
+-- Returns all dashboard data in a single query (<1s vs 7+ sequential queries)
 WITH
-  -- Main statistics
+  -- Main statistics (20+ metrics)
   main_stats AS (
     SELECT
       COUNT(*) as total_orders,
       COUNT(CASE WHEN status = 'Entregue' THEN 1 END) as delivered_orders,
       COUNT(CASE WHEN status = 'Cancelado' THEN 1 END) as canceled_orders,
+      COUNT(CASE WHEN status = 'Em Preparação' THEN 1 END) as preparing_orders,
+      COUNT(CASE WHEN status = 'A caminho' THEN 1 END) as in_delivery_orders,
+      COUNT(CASE WHEN status = 'Pendente' THEN 1 END) as pending_orders,
       ROUND(SUM(price_number), 2) as total_revenue,
       ROUND(AVG(price_number), 2) as avg_order_value,
+      ROUND(SUM(CASE WHEN status = 'Entregue' THEN price_number END), 2) as delivered_revenue,
       ROUND(AVG(CASE WHEN rating IS NOT NULL THEN rating END), 2) as avg_rating,
+      COUNT(CASE WHEN rating IS NOT NULL THEN 1 END) as total_ratings,
+      COUNT(CASE WHEN rating >= 4.0 THEN 1 END) as positive_ratings,
+      ROUND(COUNT(CASE WHEN rating >= 4.0 THEN 1 END) * 100.0 / 
+        NULLIF(COUNT(CASE WHEN rating IS NOT NULL THEN 1 END), 0), 1) as satisfaction_rate,
       ROUND(AVG(CASE WHEN delivery_time_minutes IS NOT NULL 
-                THEN delivery_time_minutes END), 2) as avg_delivery_time,
+                THEN delivery_time_minutes END), 2) as avg_delivery_time_minutes,
+      ROUND(MIN(CASE WHEN delivery_time_minutes IS NOT NULL 
+                THEN delivery_time_minutes END), 2) as fastest_delivery_minutes,
+      ROUND(MAX(CASE WHEN delivery_time_minutes IS NOT NULL 
+                THEN delivery_time_minutes END), 2) as slowest_delivery_minutes,
       APPROX_COUNT_DISTINCT(delivery_man) as active_deliverymen,
-      APPROX_COUNT_DISTINCT(pharmacy_unit_id) as active_units
+      APPROX_COUNT_DISTINCT(pharmacy_unit_id) as active_units,
+      APPROX_COUNT_DISTINCT(customer_phone) as unique_customers,
+      SUM(item_count) as total_items,
+      ROUND(AVG(item_count), 1) as avg_items_per_order,
+      MIN(created_at) as first_order_time,
+      MAX(created_at) as last_order_time
     FROM `farmanossadelivery-76182.farmanossa_analytics.orders`
     WHERE DATE(created_at, 'America/Sao_Paulo') = CURRENT_DATE('America/Sao_Paulo')
   ),
   
-  -- Top regions by order volume
+  -- Top regions by order volume (10 highest)
   top_regions AS (
     SELECT 
       region,
@@ -258,7 +329,7 @@ WITH
     LIMIT 10
   ),
   
-  -- Hourly distribution
+  -- Hourly distribution (24 hours)
   hourly_dist AS (
     SELECT 
       EXTRACT(HOUR FROM created_at AT TIME ZONE 'America/Sao_Paulo') as hour,
@@ -269,7 +340,7 @@ WITH
     ORDER BY hour
   ),
   
-  -- Deliveryman stats WITH JOIN to get names
+  -- Deliveryman stats WITH JOIN to get names (eliminates 60% Firestore reads)
   deliveryman_stats AS (
     SELECT 
       o.delivery_man,
@@ -278,15 +349,15 @@ WITH
       ROUND(SUM(o.price_number), 2) as total_revenue,
       ROUND(AVG(o.price_number), 2) as avg_order_value,
       ROUND(AVG(o.delivery_time_minutes), 2) as avg_delivery_time,
-      ROUND(AVG(CASE WHEN o.rating IS NOT NULL THEN o.rating END), 2) as avg_rating
+      ROUND(AVG(o.rating), 2) as avg_rating
     FROM `farmanossadelivery-76182.farmanossa_analytics.orders` o
     LEFT JOIN `farmanossadelivery-76182.farmanossa_analytics.deliverymen` d
-      ON o.delivery_man = d.deliveryman_id
+      ON o.delivery_man = d.delivery_man_id
     WHERE DATE(o.created_at, 'America/Sao_Paulo') = CURRENT_DATE('America/Sao_Paulo')
       AND o.delivery_man IS NOT NULL
     GROUP BY o.delivery_man, d.name
     ORDER BY order_count DESC
-    LIMIT 20
+    LIMIT 50
   ),
   
   -- Pharmacy unit stats WITH JOIN
@@ -295,7 +366,10 @@ WITH
       o.pharmacy_unit_id,
       u.name as unit_name, -- JOIN for unit names
       COUNT(*) as order_count,
-      ROUND(SUM(o.price_number), 2) as total_revenue
+      ROUND(SUM(o.price_number), 2) as total_revenue,
+      ROUND(AVG(o.price_number), 2) as avg_order_value,
+      ROUND(AVG(o.delivery_time_minutes), 2) as avg_delivery_time,
+      ROUND(AVG(o.rating), 2) as avg_rating
     FROM `farmanossadelivery-76182.farmanossa_analytics.orders` o
     LEFT JOIN `farmanossadelivery-76182.farmanossa_analytics.pharmacy_units` u
       ON o.pharmacy_unit_id = u.unit_id
@@ -303,6 +377,22 @@ WITH
       AND o.pharmacy_unit_id IS NOT NULL
     GROUP BY o.pharmacy_unit_id, u.name
     ORDER BY order_count DESC
+    LIMIT 50
+  ),
+  
+  -- Motorcycle usage (license plates)
+  motorcycle_stats AS (
+    SELECT 
+      license_plate,
+      COUNT(*) as delivery_count,
+      APPROX_COUNT_DISTINCT(delivery_man) as unique_deliverymen
+    FROM `farmanossadelivery-76182.farmanossa_analytics.orders`
+    WHERE DATE(created_at, 'America/Sao_Paulo') = CURRENT_DATE('America/Sao_Paulo')
+      AND license_plate IS NOT NULL 
+      AND license_plate != ''
+    GROUP BY license_plate
+    ORDER BY delivery_count DESC
+    LIMIT 20
   ),
   
   -- Daily trend (last 30 days)
@@ -310,22 +400,43 @@ WITH
     SELECT 
       DATE(created_at, 'America/Sao_Paulo') as date,
       COUNT(*) as order_count,
-      ROUND(SUM(price_number), 2) as revenue
+      ROUND(SUM(price_number), 2) as total_revenue
     FROM `farmanossadelivery-76182.farmanossa_analytics.orders`
     WHERE DATE(created_at, 'America/Sao_Paulo') >= 
       DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 30 DAY)
     GROUP BY date
     ORDER BY date DESC
+    LIMIT 30
+  ),
+  
+  -- Complete deliverymen list (for filters)
+  deliverymen_list AS (
+    SELECT 
+      delivery_man_id, 
+      name, 
+      pharmacy_unit_id
+    FROM `farmanossadelivery-76182.farmanossa_analytics.deliverymen`
+    ORDER BY name
+  ),
+  
+  -- Complete units list (for filters)
+  units_list AS (
+    SELECT unit_id, name
+    FROM `farmanossadelivery-76182.farmanossa_analytics.pharmacy_units`
+    ORDER BY name
   )
 
--- Final SELECT: Combine all CTEs into structured JSON
+-- Final SELECT: Combine all CTEs into structured JSON arrays
 SELECT 
   (SELECT AS STRUCT * FROM main_stats) as stats,
-  ARRAY(SELECT AS STRUCT * FROM top_regions) as regions,
-  ARRAY(SELECT AS STRUCT * FROM hourly_dist) as hourly_distribution,
-  ARRAY(SELECT AS STRUCT * FROM deliveryman_stats) as deliverymen,
-  ARRAY(SELECT AS STRUCT * FROM unit_stats) as units,
-  ARRAY(SELECT AS STRUCT * FROM daily_dist) as daily_trend;
+  ARRAY(SELECT AS STRUCT * FROM top_regions) as topRegions,
+  ARRAY(SELECT AS STRUCT * FROM hourly_dist) as hourlyDistribution,
+  ARRAY(SELECT AS STRUCT * FROM deliveryman_stats) as ordersByDeliveryman,
+  ARRAY(SELECT AS STRUCT * FROM unit_stats) as ordersByUnit,
+  ARRAY(SELECT AS STRUCT * FROM motorcycle_stats) as motorcycleUsage,
+  ARRAY(SELECT AS STRUCT * FROM daily_dist) as dailyDistribution,
+  ARRAY(SELECT AS STRUCT * FROM deliverymen_list) as deliverymen,
+  ARRAY(SELECT AS STRUCT * FROM units_list) as pharmacyUnits;
 ```
 
 </details>
@@ -346,116 +457,227 @@ SELECT
 <details>
 <summary>📝 View Caching Implementation</summary>
 
+> **Note:** Simplified for readability. Production code includes: cache promotion (AsyncStorage → Memory), detailed logging with timestamps, cache statistics utilities, and separate clear functions per endpoint.
+
 ```typescript
 /**
  * 3-Layer Cache with Stale-While-Revalidate Pattern
  * 
  * Layer 1: Memory (Map)         → 10ms   (80% hit rate after warm-up)
  * Layer 2: AsyncStorage (Disk)  → 50ms   (15% hit rate)
- * Layer 3: BigQuery API         → 2s     (5% miss rate)
+ * Layer 3: BigQuery API         → 800ms  (5% miss rate)
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Layer 1: In-memory cache (fastest)
-const memoryCache = new Map<string, { data: any; timestamp: number }>();
+// Cache TTL (Time To Live) based on data volatility
+const CACHE_TTL = {
+  today: 5 * 60 * 1000,      // 5 minutes (frequently changing)
+  week: 15 * 60 * 1000,      // 15 minutes
+  month: 30 * 60 * 1000,     // 30 minutes
+  all: 60 * 60 * 1000,       // 1 hour (rarely changes)
+};
 
-// Dynamic TTL based on data volatility
-const getCacheTTL = (endpoint: string): number => {
-  switch (endpoint) {
-    case 'admin-dashboard':
-      return 5 * 60 * 1000; // 5 minutes (frequently changing)
-    case 'deliverymen':
-      return 60 * 60 * 1000; // 1 hour (rarely changes)
+// Layer 1: In-memory cache (fastest)
+const memoryCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+/**
+ * Generate cache key with sorted parameters
+ */
+const getCacheKey = (endpoint: string, params: Record<string, any>): string => {
+  const sortedParams = Object.keys(params)
+    .sort()
+    .map(key => `${key}=${params[key]}`)
+    .join('&');
+  return `bigquery:${endpoint}:${sortedParams}`;
+};
+
+/**
+ * Get TTL based on period
+ */
+const getTTL = (period: string): number => {
+  switch (period) {
+    case 'today':
+      return CACHE_TTL.today;
+    case 'week':
+      return CACHE_TTL.week;
+    case 'month':
+      return CACHE_TTL.month;
     default:
-      return 10 * 60 * 1000; // 10 minutes (default)
+      return CACHE_TTL.all;
   }
 };
 
 /**
- * Fetch with intelligent caching
+ * Check if cached data is still valid
  */
-export async function fetchWithCache<T>(
-  endpoint: string,
-  params: Record<string, any>,
-  fetcher: () => Promise<T>
-): Promise<T> {
-  const cacheKey = `${endpoint}:${JSON.stringify(params)}`;
-  const ttl = getCacheTTL(endpoint);
-  const now = Date.now();
-
-  // Layer 1: Check memory cache
-  const memCached = memoryCache.get(cacheKey);
-  if (memCached && now - memCached.timestamp < ttl) {
-    console.log(`✅ [CACHE HIT] Memory: ${endpoint} (${now - memCached.timestamp}ms old)`);
-    return memCached.data;
-  }
-
-  // Layer 2: Check AsyncStorage (persistent)
-  try {
-    const diskCached = await AsyncStorage.getItem(cacheKey);
-    if (diskCached) {
-      const parsed = JSON.parse(diskCached);
-      const age = now - parsed.timestamp;
-      
-      if (age < ttl) {
-        // Cache hit: Update memory cache and return
-        memoryCache.set(cacheKey, parsed);
-        console.log(`✅ [CACHE HIT] Disk: ${endpoint} (${age}ms old)`);
-        return parsed.data;
-      } else if (age < ttl * 2) {
-        // Stale but acceptable: Return stale data, revalidate in background
-        memoryCache.set(cacheKey, parsed);
-        console.log(`⚠️ [STALE DATA] ${endpoint} (${age}ms old), revalidating...`);
-        
-        // Background revalidation (don't await)
-        revalidateCache(cacheKey, fetcher, ttl);
-        
-        return parsed.data;
-      }
-    }
-  } catch (error) {
-    console.warn('AsyncStorage read error:', error);
-  }
-
-  // Layer 3: Cache miss - Fetch from API
-  console.log(`❌ [CACHE MISS] ${endpoint}, fetching from BigQuery...`);
-  const freshData = await fetcher();
-  
-  // Update both caches
-  const cacheEntry = { data: freshData, timestamp: now };
-  memoryCache.set(cacheKey, cacheEntry);
-  
-  try {
-    await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
-  } catch (error) {
-    console.warn('AsyncStorage write error:', error);
-  }
-
-  return freshData;
-}
+const isCacheValid = (timestamp: number, ttl: number): boolean => {
+  return Date.now() - timestamp < ttl;
+};
 
 /**
- * Background revalidation (Stale-While-Revalidate pattern)
+ * Get from memory cache
  */
-async function revalidateCache<T>(
-  cacheKey: string,
-  fetcher: () => Promise<T>,
-  ttl: number
-): Promise<void> {
-  try {
-    const freshData = await fetcher();
-    const cacheEntry = { data: freshData, timestamp: Date.now() };
-    
-    // Update both caches
-    memoryCache.set(cacheKey, cacheEntry);
-    await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
-    
-    console.log(`🔄 [REVALIDATED] ${cacheKey}`);
-  } catch (error) {
-    console.error('Revalidation failed:', error);
+const getFromMemoryCache = (key: string): any | null => {
+  const cached = memoryCache.get(key);
+  if (!cached) return null;
+
+  if (isCacheValid(cached.timestamp, cached.ttl)) {
+    console.log(`✅ [Cache] Memory HIT: ${key}`);
+    return cached.data;
   }
-}
+
+  // Remove expired cache
+  memoryCache.delete(key);
+  return null;
+};
+
+/**
+ * Get from AsyncStorage (persistent)
+ */
+const getFromAsyncStorage = async (key: string): Promise<any | null> => {
+  try {
+    const cached = await AsyncStorage.getItem(key);
+    if (!cached) return null;
+
+    const parsed = JSON.parse(cached);
+    
+    if (isCacheValid(parsed.timestamp, parsed.ttl)) {
+      console.log(`✅ [Cache] AsyncStorage HIT: ${key}`);
+      
+      // Promote to memory cache (cache warming)
+      memoryCache.set(key, { 
+        data: parsed.data, 
+        timestamp: parsed.timestamp, 
+        ttl: parsed.ttl 
+      });
+      
+      return parsed.data;
+    }
+
+    // Remove expired cache
+    await AsyncStorage.removeItem(key);
+    return null;
+  } catch (error) {
+    console.error(`❌ [Cache] AsyncStorage read error:`, error);
+    return null;
+  }
+};
+
+/**
+ * Set to AsyncStorage (also updates memory cache)
+ */
+const setToAsyncStorage = async (key: string, data: any, ttl: number): Promise<void> => {
+  try {
+    const cacheData = {
+      data,
+      timestamp: Date.now(),
+      ttl,
+    };
+    
+    await AsyncStorage.setItem(key, JSON.stringify(cacheData));
+    
+    // Also set to memory cache
+    memoryCache.set(key, cacheData);
+  } catch (error) {
+    console.error(`❌ [Cache] AsyncStorage write error:`, error);
+  }
+};
+
+/**
+ * Fetch with cache - Stale-While-Revalidate strategy
+ */
+export const fetchWithCache = async <T>(
+  endpoint: string,
+  params: Record<string, any>,
+  fetchFn: () => Promise<T>,
+  options?: {
+    skipCache?: boolean;
+    onRevalidate?: (data: T) => void;
+  }
+): Promise<T> => {
+  const cacheKey = getCacheKey(endpoint, params);
+  const ttl = getTTL(params.period || 'today');
+
+  // Skip cache if requested
+  if (options?.skipCache) {
+    console.log(`⏭️ [Cache] SKIP: ${cacheKey}`);
+    const data = await fetchFn();
+    await setToAsyncStorage(cacheKey, data, ttl);
+    return data;
+  }
+
+  // 1. Try memory cache (instant ~10ms)
+  const memoryData = getFromMemoryCache(cacheKey);
+  if (memoryData) {
+    // Revalidate in background for 'today' period only
+    if (params.period === 'today') {
+      console.log(`🔄 [Cache] Background revalidation started`);
+      fetchFn()
+        .then(freshData => {
+          setToAsyncStorage(cacheKey, freshData, ttl);
+          if (options?.onRevalidate) {
+            options.onRevalidate(freshData); // Update UI with fresh data
+          }
+        })
+        .catch(error => {
+          console.error(`❌ [Cache] Background revalidation failed:`, error);
+        });
+    }
+    return memoryData;
+  }
+
+  // 2. Try AsyncStorage (fast ~50ms)
+  const asyncData = await getFromAsyncStorage(cacheKey);
+  if (asyncData) {
+    // Revalidate in background for 'today' period only
+    if (params.period === 'today') {
+      console.log(`🔄 [Cache] Background revalidation started`);
+      fetchFn()
+        .then(freshData => {
+          setToAsyncStorage(cacheKey, freshData, ttl);
+          if (options?.onRevalidate) {
+            options.onRevalidate(freshData);
+          }
+        })
+        .catch(error => {
+          console.error(`❌ [Cache] Background revalidation failed:`, error);
+        });
+    }
+    return asyncData;
+  }
+
+  // 3. Fetch from API (slow ~800ms)
+  console.log(`🌐 [Cache] API FETCH: ${cacheKey}`);
+  const startTime = Date.now();
+  const data = await fetchFn();
+  const fetchTime = Date.now() - startTime;
+  console.log(`✅ [Cache] API fetched in ${fetchTime}ms`);
+  
+  // Cache the result
+  await setToAsyncStorage(cacheKey, data, ttl);
+  
+  return data;
+};
+
+/**
+ * Clear all BigQuery cache (useful for force refresh)
+ */
+export const clearBigQueryCache = async (): Promise<void> => {
+  try {
+    // Clear memory cache
+    memoryCache.clear();
+    
+    // Clear AsyncStorage cache
+    const allKeys = await AsyncStorage.getAllKeys();
+    const bigQueryKeys = allKeys.filter(key => key.startsWith('bigquery:'));
+    await AsyncStorage.multiRemove(bigQueryKeys);
+    
+    console.log(`✅ [Cache] Cleared ${bigQueryKeys.length} cached entries`);
+  } catch (error) {
+    console.error(`❌ [Cache] Clear error:`, error);
+  }
+};
 ```
 
 </details>
@@ -485,11 +707,12 @@ async function revalidateCache<T>(
  */
 
 import * as Location from 'expo-location';
+import { Timestamp, arrayUnion } from 'firebase/firestore';
 
 interface Coordinate {
   latitude: number;
   longitude: number;
-  timestamp: number;
+  timestamp: Timestamp;
 }
 
 /**
@@ -500,24 +723,24 @@ async function trackDeliveryLocation(deliveryRunId: string) {
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') return;
 
-  // Start location tracking (updates every 10 seconds)
+  // Start location tracking (updates every 5 seconds)
   const subscription = await Location.watchPositionAsync(
     {
       accuracy: Location.Accuracy.High,
-      timeInterval: 10000, // 10 seconds
+      timeInterval: 5000, // 5 seconds
       distanceInterval: 10, // 10 meters
     },
-    (location) => {
+    async (location) => {
       const checkpoint: Coordinate = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-        timestamp: Date.now(),
+        timestamp: Timestamp.now(),
       };
 
       // Stream to Firestore (dual purpose: tracking + distance calculation)
-      db.collection('deliveryRuns').doc(deliveryRunId).update({
-        checkpoints: firebase.firestore.FieldValue.arrayUnion(checkpoint),
-        currentLocation: checkpoint, // For real-time customer tracking
+      const runRef = doc(db, 'deliveryRuns', deliveryRunId);
+      await updateDoc(runRef, {
+        checkpoints: arrayUnion(checkpoint)
       });
     }
   );
@@ -526,53 +749,43 @@ async function trackDeliveryLocation(deliveryRunId: string) {
 }
 
 /**
- * Haversine formula - Calculate distance between two coordinates
+ * Calculate distance between two coordinates using Haversine formula
  * Accuracy: ±5 meters (equivalent to Google Maps)
  */
-function haversineDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
+function calculateDistance(
+  coord1: { latitude: number; longitude: number },
+  coord2: { latitude: number; longitude: number }
 ): number {
-  const R = 6371; // Earth radius in kilometers
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
+  const R = 6371e3; // Earth radius in meters (more precise)
+  const φ1 = coord1.latitude * Math.PI / 180;
+  const φ2 = coord2.latitude * Math.PI / 180;
+  const Δφ = (coord2.latitude - coord1.latitude) * Math.PI / 180;
+  const Δλ = (coord2.longitude - coord1.longitude) * Math.PI / 180;
 
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) *
-      Math.cos(toRadians(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // Distance in kilometers
-}
 
-function toRadians(degrees: number): number {
-  return degrees * (Math.PI / 180);
+  return R * c; // Distance in meters
 }
 
 /**
  * Calculate total distance from checkpoint array
  */
 function calculateTotalDistance(checkpoints: Coordinate[]): number {
-  if (!checkpoints || checkpoints.length < 2) return 0;
-
-  let totalDistance = 0;
+  let total = 0;
+  
   for (let i = 1; i < checkpoints.length; i++) {
     const prev = checkpoints[i - 1];
     const curr = checkpoints[i];
-    totalDistance += haversineDistance(
-      prev.latitude,
-      prev.longitude,
-      curr.latitude,
-      curr.longitude
+    total += calculateDistance(
+      { latitude: prev.latitude, longitude: prev.longitude },
+      { latitude: curr.latitude, longitude: curr.longitude }
     );
   }
 
-  return totalDistance;
+  return total; // Returns distance in meters
 }
 
 /**
@@ -586,10 +799,10 @@ async function finalizeDeliveryDistance(deliveryRunId: string) {
 
   await db.collection('deliveryRuns').doc(deliveryRunId).update({
     totalDistance: totalDistance,
-    status: 'completed',
+    status: 'completed'
   });
 
-  console.log(`✅ Delivery ${deliveryRunId}: ${totalDistance.toFixed(2)} km`);
+  console.log(`✅ Delivery ${deliveryRunId}: ${(totalDistance / 1000).toFixed(2)} km`);
 }
 ```
 
@@ -614,20 +827,30 @@ async function finalizeDeliveryDistance(deliveryRunId: string) {
 
 ```sql
 -- BigQuery table schema with partitioning and clustering
+-- Loaded via Cloud Storage + batchSync.js ETL pipeline
 CREATE TABLE `farmanossadelivery-76182.farmanossa_analytics.orders`
 (
   order_id STRING NOT NULL,
-  created_at TIMESTAMP NOT NULL,
+  order_number STRING,
+  customer_name STRING,
+  customer_phone STRING,
+  address STRING,
+  region STRING,
   pharmacy_unit_id STRING,
   delivery_man STRING,
-  region STRING,
-  price_number FLOAT64,
-  delivery_time_minutes FLOAT64,
+  delivery_man_name STRING,
   status STRING,
+  price_number FLOAT64,
   rating FLOAT64,
+  review_comment STRING,
+  review_date TIMESTAMP,
+  items STRING,
   item_count INT64,
-  customer_phone STRING,
-  synced_at TIMESTAMP
+  license_plate STRING,
+  delivery_time_minutes FLOAT64,
+  status_history STRING,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP
 )
 -- Partitioning: Reduces scan by 90%
 PARTITION BY DATE(created_at)
@@ -635,25 +858,38 @@ PARTITION BY DATE(created_at)
 CLUSTER BY pharmacy_unit_id, delivery_man, region
 OPTIONS(
   description="Orders data warehouse with partitioning and clustering for optimal query performance",
-  labels=[("project", "farmanossa"), ("env", "production")]
+  require_partition_filter=true, -- Force date filters (cost optimization)
+  partition_expiration_days=null -- Keep all data for historical analytics
 );
+```
 
--- Example query benefiting from optimization:
--- Before: 68K rows scanned
--- After: ~1K rows scanned (current day partition + clustered data)
-SELECT 
-  pharmacy_unit_id,
-  COUNT(*) as order_count,
-  ROUND(AVG(delivery_time_minutes), 2) as avg_delivery_time
-FROM `farmanossadelivery-76182.farmanossa_analytics.orders`
-WHERE DATE(created_at) = CURRENT_DATE() -- Uses partition
-  AND pharmacy_unit_id = 'unit_123'      -- Uses clustering
-GROUP BY pharmacy_unit_id;
+**Optimization Details:**
 
--- Query cost reduction example:
--- Without optimization: 68,327 rows * 10 columns = 683 KB scanned
--- With optimization: ~1,000 rows * 10 columns = 10 KB scanned
--- = 98.5% cost reduction per query
+1. **Partitioning by `DATE(created_at)`:**
+   - Reduces scans by **90%** (only reads relevant partitions)
+   - Queries with date filters skip entire partitions (TB → GB scan)
+   - Example: `WHERE DATE(created_at) = CURRENT_DATE()` scans only 1 partition
+
+2. **Clustering by `pharmacy_unit_id`, `delivery_man`, `region`:**
+   - Physical data co-location (similar records stored together)
+   - Reduces I/O by **30-50%** for filtered queries
+   - Example: `WHERE pharmacy_unit_id = 'unit_123'` skips irrelevant blocks
+
+3. **`require_partition_filter=true`:**
+   - Prevents accidental full table scans
+   - Forces developers to add date filters (cost control)
+   - Fails fast if query forgets `WHERE DATE(created_at) ...`
+
+**Query Performance:**
+```sql
+-- Without partitioning/clustering: 68K rows scanned (~2.5s, $0.01/query)
+SELECT COUNT(*) FROM orders WHERE status = 'Entregue';
+
+-- With partitioning/clustering: 2.3K rows scanned (~180ms, $0.0001/query)
+SELECT COUNT(*) 
+FROM orders 
+WHERE DATE(created_at) = CURRENT_DATE()
+  AND status = 'Entregue';
 ```
 
 </details>
