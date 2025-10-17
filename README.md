@@ -55,10 +55,10 @@ SQL • TypeScript/JavaScript • Python • Git • GCP
 │                            │                            │
 │            ┌───────────────┼───────────────┐            │
 │            ▼               ▼               ▼            │
-│       ┌────────┐     ┌─────────┐    ┌─────────┐        │
-│       │ Mobile │     │  Cloud  │    │Reference│        │
-│       │  Apps  │     │Functions│    │ Triggers│        │
-│       └────────┘     │ (ETL)   │    └─────────┘        │
+│       ┌────────┐     ┌─────────┐    ┌─────────┐         │
+│       │ Mobile │     │  Cloud  │    │Reference│         │
+│       │  Apps  │     │Functions│    │ Triggers│         │
+│       └────────┘     │ (ETL)   │    └─────────┘         │
 │                      └────┬────┘                        │
 │                           │ Every 5 min                 │
 │                           ▼                             │
