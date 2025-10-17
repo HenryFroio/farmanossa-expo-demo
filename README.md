@@ -1,11 +1,11 @@
 # 📊 Farmanossa - Pharmacy Delivery Data Platform
 
-> **Production data engineering system** managing **1,000+ daily orders** with **Kappa Architecture** (Firestore + BigQuery), processing **68K+ orders** and **160K+ delivery runs** with **sub-second latency** and intelligent analytics.
+> **Production data engineering system** with **Kappa Architecture** (Firestore + BigQuery) processing **2.47M+ records** (189K orders + 73K runs + 2.21M GPS coordinates) across 5 months (May-Sept 2025). Monthly throughput: **~38K orders/month**, **~14.5K runs/month**, **~441K GPS coordinates/month** (~30 coords/run) with **sub-second analytics latency** and intelligent caching.
 
 [![Kappa Architecture](https://img.shields.io/badge/Kappa-Architecture-purple.svg)](https://www.oreilly.com/radar/questioning-the-lambda-architecture/)
-[![BigQuery](https://img.shields.io/badge/BigQuery-160K+_Records_Processed-blue.svg)](https://cloud.google.com/bigquery)
+[![BigQuery](https://img.shields.io/badge/BigQuery-2.47M+_records-blue.svg)](https://cloud.google.com/bigquery)
 [![95% Faster](https://img.shields.io/badge/Performance-95%25_Faster-red.svg)](https://github.com)
-[![Cost](https://img.shields.io/badge/Cost-$6,000+/yr_Saved-orange.svg)](https://github.com)
+[![Cost](https://img.shields.io/badge/Cost-$24,000+/yr_Saved-orange.svg)](https://github.com)
 
 ---
 
@@ -15,7 +15,7 @@
 - ✅ Built **serverless ETL pipelines** processing 1,000+ orders/day via Cloud Functions
 - ✅ Optimized BigQuery queries with **partitioning/clustering** (90% scan reduction)
 - ✅ Developed **3-layer caching system** achieving 80%+ hit ratio and 95% performance improvement
-- ✅ Reduced costs by **$6,000+/year** through architectural optimizations
+- ✅ Reduced costs by **$24,000+/year** through architectural optimizations
 - ✅ Implemented **OCR data ingestion pipeline** solving missing POS API integration
 
 ---
@@ -65,7 +65,10 @@ SQL • TypeScript/JavaScript • Python • Git • GCP
 │                    ┌─────────────┐                      │
 │                    │  BIGQUERY   │                      │
 │                    │  Dataset    │                      │
-│                    │ 160K+ rows  │                      │
+│                    │ 2.47M+ rows │                      │
+│                    │189K orders  │                      │
+│                    │ 73K runs    │                      │
+│                    │2.21M coords │                      │
 │                    └──────┬──────┘                      │
 │                           │                             │
 │                           ▼                             │
@@ -86,9 +89,10 @@ SQL • TypeScript/JavaScript • Python • Git • GCP
 
 | **Challenge** | **Solution** | **Business Impact** |
 |---------------|--------------|---------------------|
-| Dashboard loading 90+ seconds | BigQuery + 3-layer caching system | 95% performance improvement |
+| Dashboard loading 90+ seconds | BigQuery + 3-layer caching system | 95% performance improvement (90s → 2-3s) |
 | No POS system API available | Custom OCR extraction pipeline | 100% automation, zero manual entry |
-| $500+/month GPS API costs | Native device GPS + Haversine algorithm | $500/mo saved ($6,000+/year) |
+| R$ 10,880/month infrastructure | Native GPS + Haversine + BigQuery analytics | 93% cost reduction (R$ 780/month) |
+| $2,000+/month GPS tracking costs | Native device GPS instead of Google Maps API | $2,000/mo saved ($24,000+/year) |
 | 7 sequential database queries | Single master query with CTEs | 7x faster, sub-second response |
 | Client-side data bottleneck | Server-side pre-aggregation | 98% CPU reduction |
 
@@ -692,18 +696,27 @@ export const clearBigQueryCache = async (): Promise<void> => {
 
 ### 4. Cost-Optimized GPS Distance Calculation
 
-**Challenge:** Google Maps Distance Matrix API would cost $500+/month for 160K+ delivery runs  
+**Challenge:** Google Maps Distance Matrix API would cost $2,000+/month for both distance calculation AND real-time delivery tracking for ~14.5K+ monthly delivery runs  
 **Solution:** Native device GPS + Haversine formula (zero API costs, ±5m accuracy)
+
+> **💰 Cost Impact:** The combination of GPS+Haversine (avoiding Google Maps API) + BigQuery analytics (instead of Firestore-only) reduced monthly infrastructure from **R$ 10,880 to R$ 780** (93% reduction). Current costs: Azure OCR API + Cloud Functions + Firestore + BigQuery, with BigQuery providing 8% savings and 95% performance improvement over Firestore-only analytics.
 
 <details>
 <summary>📝 View Geospatial Implementation</summary>
 
 ```typescript
 /**
- * Cost-Optimized Distance Calculation
+ * Cost-Optimized Distance Calculation & Real-time Tracking
  * 
- * Google Maps Distance Matrix API: $500+/month for 160K runs
- * Native GPS + Haversine: $0/month with equivalent accuracy
+ * WITHOUT optimization (using Google Maps API):
+ * - Distance calculation: $500+/month
+ * - Real-time tracking: $1,500+/month
+ * - Total: $2,000+/month ($24,000+/year)
+ * 
+ * WITH optimization (Native GPS + Haversine):
+ * - Cost: $0/month
+ * - Accuracy: ±5m (equivalent to Google Maps)
+ * - Dual benefit: Distance calculation + customer tracking
  */
 
 import * as Location from 'expo-location';
@@ -809,11 +822,11 @@ async function finalizeDeliveryDistance(deliveryRunId: string) {
 </details>
 
 **Impact:**  
-- ✅ **$500+/month saved** ($6,000+/year cost elimination)  
+- ✅ **$2,000+/month saved** ($24,000+/year cost elimination)  
 - ✅ **±5m accuracy** (equivalent to Google Maps)  
 - ✅ **Dual benefit**: Distance tracking + real-time customer tracking (CRM feature)  
-- ✅ **160K+ runs** processed with zero API costs  
-- ✅ **Historical geospatial data** in BigQuery for ML/analytics
+- ✅ **73K+ runs processed** (5 months production, ~14.5K/month) with zero API costs  
+- ✅ **2.21M GPS coordinates** (~30 per run) stored in BigQuery for geospatial analytics
 
 ---
 
@@ -906,14 +919,16 @@ WHERE DATE(created_at) = CURRENT_DATE()
 
 | **Metric** | **Value** | **Details** |
 |------------|-----------|-------------|
-| **Data Volume** | 160K+ records | 68K orders + 92K delivery runs in BigQuery |
-| **Daily Throughput** | 1,000+ orders | Production load, scales to 10K+ |
-| **Dashboard Performance** | 95% faster | 90s → 2-3s (cold) / 50ms (cached) |
+| **Production Period** | 5 months | May-September 2025 |
+| **Total Data Volume** | 2.47M+ records | 189K orders + 73K runs + 2.21M GPS coordinates |
+| **Monthly Throughput** | ~38K orders/month | ~1,260 orders/day, ~14.5K runs/month, ~441K GPS coords/month |
+| **Analytics Latency** | Sub-second | Processes 2.47M+ records with instant query response |
+| **Dashboard Performance** | 95% faster | 90s → 2-3s (cold) / 50ms (cached) with BigQuery vs Firestore-only analytics |
 | **Cache Hit Ratio** | 80%+ | After warm-up, eliminates 80% of API calls |
 | **Query Scan Reduction** | 90% | Via partitioning by date |
-| **Cost per Order** | R$ 0.0024 | Highly cost-efficient |
-| **Monthly Infrastructure** | R$ 73 | Down from R$ 80 (9% reduction) |
-| **GPS Cost Savings** | $6,000+/year | $500+/month saved via native GPS + Haversine |
+| **Cost Optimization** | 93% reduction | R$ 10,880/month → R$ 780/month (GPS+Haversine + BigQuery analytics) |
+| **Monthly Infrastructure** | R$ 780 | Azure OCR + Cloud Functions + Firestore + BigQuery (8% savings vs Firestore-only analytics) |
+| **GPS Cost Savings** | $24,000+/year | $2,000+/month saved via native GPS + Haversine (avoided Google Maps API) |
 | **Platform Uptime** | 99.9% | Production SLA |
 | **Query Execution** | 800ms avg | BigQuery master query |
 
@@ -951,7 +966,9 @@ Mobile App (Instant Availability)
 ## 🛠️ Tech Stack (Data Engineering Focus)
 
 ### Data Warehousing & Analytics
-- **BigQuery** - Columnar data warehouse (160K+ records)
+- **BigQuery** - Columnar data warehouse (2.47M+ records: 189K orders + 73K runs + 2.21M GPS coordinates)
+- **Real-time Geospatial Tracking** - ~30 GPS coordinates per delivery run stored for analytics
+- **Monthly Analytics** - ~38K orders/month, ~14.5K runs/month, ~441K GPS coords/month processed with sub-second latency
 - **Partitioning** - By DATE(created_at) for scan optimization
 - **Clustering** - By pharmacy_unit_id, delivery_man, region
 - **CTEs** - Master query pattern with 9 Common Table Expressions
@@ -998,7 +1015,7 @@ Specialized in **Kappa Architecture**, **BigQuery optimization**, **high-perform
 Seeking **Data Engineering** roles where I can apply my experience in:
 
 ✅ Building and optimizing **data pipelines** at scale  
-✅ **Cost-conscious architecture** (saved $6,000+/year in production)  
+✅ **Cost-conscious architecture** (saved $24,000+/year in production)  
 ✅ **Performance engineering** (95% improvement in real systems)  
 ✅ **Problem-solving** (built OCR solution when APIs weren't available)
 
