@@ -9,10 +9,11 @@
 
 ---
 
-## 🎯 My Role (Data Engineering)
+## 🎯 My Role (Data Engineering - End-to-End Ownership)
 
+- ✅ **Architected and built the complete data platform independently** - from data sourcing (OCR pipeline), processing (ETL), warehousing (BigQuery), to delivery (analytics dashboards), plus mobile app development for data consumption
 - ✅ Designed and implemented **Kappa Architecture** with Firestore (operational) + BigQuery (analytical)
-- ✅ Built **serverless ETL pipelines** processing 1,000+ orders/day via Cloud Functions
+- ✅ Built **serverless ETL pipelines** processing **~38K+ daily transactions** (15K SDK writes + 23K Cloud Functions invocations)
 - ✅ Optimized BigQuery queries with **partitioning/clustering** (90% scan reduction)
 - ✅ Developed **3-layer caching system** achieving 80%+ hit ratio and 95% performance improvement
 - ✅ Reduced costs by **$24,000+/year** through architectural optimizations
@@ -264,7 +265,7 @@ function calculateDeliveryTime(statusHistory, orderId = 'unknown') {
 </details>
 
 **Impact:**  
-- ✅ **100+ orders** processed per execution  
+- ✅ **~23K+ Cloud Functions invocations/day** (batch sync + triggers + notifications + status updates)  
 - ✅ **Near real-time** (5-min sync window)  
 - ✅ **Cost: FREE** (New data synced to BigQuery through temp file upload every 5 min, instead of realtime data writting)  
 - ✅ **Idempotent** (safe for retry)
