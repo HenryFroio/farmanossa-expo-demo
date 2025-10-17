@@ -91,7 +91,7 @@ SQL • TypeScript/JavaScript • Python • Git • GCP
 |---------------|--------------|---------------------|
 | Dashboard loading 90+ seconds | BigQuery + 3-layer caching system | 95% performance improvement (90s → 2-3s) |
 | No POS system API available | Custom OCR extraction pipeline | 100% automation, zero manual entry |
-| R$ 10,880/month infrastructure | Native GPS + Haversine + BigQuery analytics | 93% cost reduction (R$ 780/month) |
+| $2,176/month infrastructure | Native GPS + Haversine + BigQuery analytics | 93% cost reduction ($156/month) |
 | $2,000+/month GPS tracking costs | Native device GPS instead of Google Maps API | $2,000/mo saved ($24,000+/year) |
 | 7 sequential database queries | Single master query with CTEs | 7x faster, sub-second response |
 | Client-side data bottleneck | Server-side pre-aggregation | 98% CPU reduction |
@@ -102,7 +102,7 @@ SQL • TypeScript/JavaScript • Python • Git • GCP
 
 ### 1. Pipeline ETL Near Real-Time (Firestore → BigQuery)
 
-**Challenge:** Dashboard taking 90+ seconds loading 68K+ orders from Firestore  
+**Challenge:** Dashboard taking 90+ seconds loading 38K+ orders from Firestore in admin dashboard  
 **Solution:** Sync to BigQuery every 5 minutes with pre-aggregated queries
 
 <details>
@@ -266,7 +266,7 @@ function calculateDeliveryTime(statusHistory, orderId = 'unknown') {
 **Impact:**  
 - ✅ **100+ orders** processed per execution  
 - ✅ **Near real-time** (5-min sync window)  
-- ✅ **Cost: FREE** (under Cloud Functions free tier)  
+- ✅ **Cost: FREE** (New data synced to BigQuery through temp file upload every 5 min, instead of realtime data writting)  
 - ✅ **Idempotent** (safe for retry)
 
 ---
@@ -699,7 +699,7 @@ export const clearBigQueryCache = async (): Promise<void> => {
 **Challenge:** Google Maps Distance Matrix API would cost $2,000+/month for both distance calculation AND real-time delivery tracking for ~14.5K+ monthly delivery runs  
 **Solution:** Native device GPS + Haversine formula (zero API costs, ±5m accuracy)
 
-> **💰 Cost Impact:** The combination of GPS+Haversine (avoiding Google Maps API) + BigQuery analytics (instead of Firestore-only) reduced monthly infrastructure from **R$ 10,880 to R$ 780** (93% reduction). Current costs: Azure OCR API + Cloud Functions + Firestore + BigQuery, with BigQuery providing 8% savings and 95% performance improvement over Firestore-only analytics.
+> **💰 Cost Impact:** The combination of GPS+Haversine (avoiding Google Maps API) + BigQuery analytics (instead of Firestore-only) reduced monthly infrastructure from **$2,176 to $156** (93% reduction). Current costs: Azure OCR API + Cloud Functions + Firestore + BigQuery, with BigQuery providing 8% savings and 95% performance improvement over Firestore-only analytics.
 
 <details>
 <summary>📝 View Geospatial Implementation</summary>
@@ -832,7 +832,7 @@ async function finalizeDeliveryDistance(deliveryRunId: string) {
 
 ### 5. BigQuery Table Optimization (Partitioning & Clustering)
 
-**Challenge:** Full table scans processing 68K+ rows costing time and money  
+**Challenge:** Full table scans processing 189K+ rows costing time and money  
 **Solution:** Partitioning by date + clustering by business dimensions
 
 <details>
@@ -895,7 +895,7 @@ OPTIONS(
 
 **Query Performance:**
 ```sql
--- Without partitioning/clustering: 68K rows scanned (~2.5s, $0.01/query)
+-- Without partitioning/clustering: 189K rows scanned (~2.5s, $0.01/query)
 SELECT COUNT(*) FROM orders WHERE status = 'Entregue';
 
 -- With partitioning/clustering: 2.3K rows scanned (~180ms, $0.0001/query)
@@ -926,8 +926,8 @@ WHERE DATE(created_at) = CURRENT_DATE()
 | **Dashboard Performance** | 95% faster | 90s → 2-3s (cold) / 50ms (cached) with BigQuery vs Firestore-only analytics |
 | **Cache Hit Ratio** | 80%+ | After warm-up, eliminates 80% of API calls |
 | **Query Scan Reduction** | 90% | Via partitioning by date |
-| **Cost Optimization** | 93% reduction | R$ 10,880/month → R$ 780/month (GPS+Haversine + BigQuery analytics) |
-| **Monthly Infrastructure** | R$ 780 | Azure OCR + Cloud Functions + Firestore + BigQuery (8% savings vs Firestore-only analytics) |
+| **Cost Optimization** | 93% reduction | $2,176/month → $156/month (GPS+Haversine + BigQuery analytics) |
+| **Monthly Infrastructure** | $156 | Azure OCR + Cloud Functions + Firestore + BigQuery (8% savings vs Firestore-only analytics) |
 | **GPS Cost Savings** | $24,000+/year | $2,000+/month saved via native GPS + Haversine (avoided Google Maps API) |
 | **Platform Uptime** | 99.9% | Production SLA |
 | **Query Execution** | 800ms avg | BigQuery master query |
@@ -1001,7 +1001,7 @@ Mobile App (Instant Availability)
 **Henry Froio**  
 *Data Engineer | 4+ years experience*
 
-Specialized in **Kappa Architecture**, **BigQuery optimization**, **high-performance ETL pipelines**, and **intelligent document processing**.
+Experienced in **cloud data platforms**, **ETL pipeline development**, **query optimization**, **data integration**, and **full-stack engineering** across diverse tech stacks.
 
 - **Email:** henry.froio@outlook.com
 - **LinkedIn:** https://www.linkedin.com/in/henry-froio-827816238/
