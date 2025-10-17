@@ -89,7 +89,7 @@ SQL • TypeScript/JavaScript • Python • Git • GCP
 
 | **Challenge** | **Solution** | **Business Impact** |
 |---------------|--------------|---------------------|
-| Dashboard loading 90+ seconds | BigQuery + 3-layer caching system | 95% performance improvement (90s → 2-3s) |
+| Dashboard loading 90+ seconds | BigQuery + 3-layer caching system | 95% performance improvement (90s → 2-3s) with 8% less cost |
 | No POS system API available | Custom OCR extraction pipeline | 100% automation, zero manual entry |
 | $2,176/month infrastructure | Native GPS + Haversine + BigQuery analytics | 93% cost reduction ($156/month) |
 | $2,000+/month GPS tracking costs | Native device GPS instead of Google Maps API | $2,000/mo saved ($24,000+/year) |
